@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>TriggersTools.ILPatching</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>TRACE;MONO</DefineConstants>
+    <Version>0.0.1</Version>
+    <Copyright>Copyright © Robert Jordan 2018</Copyright>
+    <Authors>Robert Jordan</Authors>
+    <Company>Trigger's Tools &amp; Games</Company>
+    <Description>A library with helpful methods for scanning and patching CIL instructions with Mono.Cecil</Description>
+    <PackageLicenseUrl>https://github.com/trigger-death/TriggersTools.ILPatching/blob/master/License.md</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/trigger-death/TriggersTools.ILPatching</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/trigger-death/TriggersTools.ILPatching</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>patching, cil, il</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="RegularExpressions\Captures\ILCapture.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="RegularExpressions\Captures\ILCapture.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" Version="0.10.1" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+  </ItemGroup>
+
+</Project>
