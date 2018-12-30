@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -9,6 +12,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// <summary>
 	/// A builder class for printing and appending <see cref="ILRegex"/> instruction checks.
 	/// </summary>
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public partial class ILPatternBuilder : IList<ILCheck>, IReadOnlyList<ILCheck> {
 		#region Fields
 
@@ -87,32 +91,38 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// </param>
 		/// 
 		/// <exception cref="ILRegexException">
-		/// A quantifier is improperly placed.
+		/// A quantifier is improperly placed and <paramref name="throwOnDanglingQuantifier"/> is true.
 		/// </exception>
 		public void AttachQuantifiers(bool throwOnDanglingQuantifier) {
-			//ILCheck lastCheck = null;
-			bool lastCheckQuantified = false;
+			//bool lastCheckQuantified = false;
+			ILCheck lastCheck = null;
+			int lastCheckIndex = -1;
 			for (int i = 0; i < checks.Count; i++) {
-				ILCheck lastCheck = (i != 0 ? checks[i - 1] : null);
+				//ILCheck lastCheck = (i != 0 ? checks[i - 1] : null);
 				ILCheck check = checks[i];
 				if (check.Code == OpChecks.Quantifier && (throwOnDanglingQuantifier ||
-					(i != 0 && lastCheck.Quantifier.IsOne && !lastCheckQuantified &&
-					lastCheck.Code != OpChecks.Quantifier && lastCheck.Code != OpChecks.GroupStart)))
+					(lastCheck != null && lastCheck.Quantifier.IsOne && /*!lastCheckQuantified &&*/
+					lastCheck.Code != OpChecks.Quantifier && lastCheck.Code != OpChecks.GroupStart &&
+					lastCheck.Code != OpChecks.Alternative)))
 				{
 					if (throwOnDanglingQuantifier) {
-						if (i == 0)
-							throw new ILRegexException($"Unexpected quantifier {check.Quantifier} at beginning of pattern!");
-						else if (!lastCheck.Quantifier.IsOne || lastCheckQuantified)
-							throw new ILRegexException($"Cannot attach quantifier {check.Quantifier} to an already-quantified check {lastCheck}!");
+						if (lastCheck == null)
+							throw new ILRegexException($"Unexpected quantifier check {check.Quantifier} at beginning of pattern!");
 						else if (lastCheck.Code == OpChecks.GroupStart)
 							throw new ILRegexException($"Cannot attach quantifier {check.Quantifier} to group start {lastCheck}!");
+						else if (lastCheck.Code == OpChecks.Alternative)
+							throw new ILRegexException($"Cannot attach quantifier {check.Quantifier} to altervative {lastCheck}!");
+						else if (!lastCheck.Quantifier.IsOne)
+							throw new ILRegexException($"Cannot attach quantifier {check.Quantifier} to an already quantified check {lastCheck}!");
 					}
-					checks[i - 1] = lastCheck.Repeat(check.Quantifier); // This clones the (sort of) immutable ILCheck
-					lastCheckQuantified = true;
+					checks[lastCheckIndex] = lastCheck = lastCheck.Repeat(check.Quantifier); // This clones the (sort of) immutable ILCheck
+					//lastCheckQuantified = true;
 					checks.RemoveAt(i--);
 					continue;
 				}
-				lastCheckQuantified = false;
+				lastCheck = check;
+				lastCheckIndex = i;
+				//lastCheckQuantified = false;
 			}
 		}
 
@@ -239,8 +249,63 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// </summary>
 		/// <param name="s">The string representation of the pattern to parse.</param>
 		/// <returns>The parsed pattern.</returns>
-		public ILPatternBuilder Parse(string s) {
+		/// 
+		/// <exception cref="ArgumentNullException">
+		/// <paramref name="s"/> is null.
+		/// </exception>
+		/// <exception cref="ArgumentException">
+		/// A check's capture name is not a valid regex capture name.
+		/// </exception>
+		/// <exception cref="FormatException">
+		/// A check was improperly formatted. Or an unexpected token was encountered.
+		/// </exception>
+		public static ILPatternBuilder Parse(string s) {
 			return new ILPatternBuilder(ILCheck.ParseMany(s));
+		}
+		/// <summary>
+		/// Parses the text from a file into an <see cref="ILRegex"/> pattern.
+		/// </summary>
+		/// <param name="filePath">The file path to get the text from.</param>
+		/// <returns>The parsed pattern.</returns>
+		/// 
+		/// <exception cref="ArgumentException">
+		/// <paramref name="filePath"/> is a zero-length string, contains only white space, or contains one
+		/// or more invalid characters as defined by <see cref="Path.InvalidPathChars"/>. Or A check's
+		/// capture name is not a valid regex capture name.
+		/// </exception>
+		/// <exception cref="ArgumentNullException">
+		/// <paramref name="filePath"/> is null.
+		/// </exception>
+		/// <exception cref="PathTooLongException">
+		/// The specified path, file name, or both exceed the system-defined maximum length. For example, on
+		/// Windows-based platforms, paths must be less than 248 characters, and file names must be less than
+		/// 260 characters.
+		/// </exception>
+		/// <exception cref="DirectoryNotFoundException">
+		/// The specified path is invalid (for example, it is on an unmapped drive).
+		/// </exception>
+		/// <exception cref="IOException">
+		/// An I/O error occurred while opening the file.
+		/// </exception>
+		/// <exception cref="UnauthorizedAccessException">
+		/// <paramref name="filePath"/> specified a file that is read-only.-or- This operation is not
+		/// supported on the current platform.-or- path specified a directory.-or- The caller does not have
+		/// the required permission.
+		/// </exception>
+		/// <exception cref="FileNotFoundException">
+		/// The file specified in path was not found.
+		/// </exception>
+		/// <exception cref="NotSupportedException">
+		/// <paramref name="filePath"/> is in an invalid format.
+		/// </exception>
+		/// <exception cref="SecurityException">
+		/// The caller does not have the required permission.
+		/// </exception>
+		/// <exception cref="FormatException">
+		/// A check was improperly formatted. Or an unexpected token was encountered.
+		/// </exception>
+		public static ILPatternBuilder FromFile(string filePath) {
+			return Parse(File.ReadAllText(filePath));
 		}
 
 		#endregion
@@ -251,20 +316,8 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// Constructs an immutable pattern from the pattern builder.
 		/// </summary>
 		/// <returns>The immutable pattern.</returns>
-		public ILPattern ToPattern() {
-			return new ILPattern(this);
-		}
-		/// <summary>
-		/// Constructs an <see cref="ILRegex"/> from the pattern.
-		/// </summary>
-		/// <returns>The <see cref="ILRegex"/>.</returns>
-		public ILRegex ToRegex() {
-			return new ILRegex(new ILPattern(this));
-		}
-
-		public static implicit operator ILPattern(ILPatternBuilder builder) {
-			return new ILPattern(builder);
-		}
+		public ILPattern ToPattern() => new ILPattern(this);
+		public static implicit operator ILPattern(ILPatternBuilder builder) => new ILPattern(builder);
 
 		#endregion
 

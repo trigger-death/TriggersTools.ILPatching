@@ -1,0 +1,151 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "ILRegex",
+  "fileTypes": [
+    "ilregex",
+    "ILREGEX"
+  ],
+	"patterns": [
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#captures"
+		},
+    {
+      "include": "#numerics"
+    },
+    {
+      "include": "#opcodes"
+    },
+    {
+      "include": "#tokens"
+    },
+    {
+      "include": "#checks"
+    },
+    {
+      "include": "#groups"
+    },
+    {
+      "include": "#quantifiers"
+    }
+	],
+	"repository": {
+		"strings": {
+			"name": "string.regexp",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.ilregex",
+					"match": "\\\\."
+				}
+			]
+		},
+		"captures": {
+			"name": "variable",
+			"begin": "'",
+			"end": "'",
+			"patterns": [
+				{
+					"name": "constant.character.escape.ilregex",
+					"match": "\\\\."
+				}
+			]
+		},
+    "numerics": {
+      "patterns": [
+        {
+          "name": "constant.numeric",
+          "match": "\\b\\d+\\b"
+        },
+        {
+          "name": "constant.numeric",
+          "match": "\\b\\d+[Ll]\\b"
+        },
+        {
+          "name": "constant.numeric",
+          "match": "\\b\\d+[Bb]\\b"
+        },
+        {
+          "name": "constant.numeric",
+          "match": "\\b\\d+[Ss][Bb]\\b"
+        },
+        {
+          "name": "constant.numeric",
+          "match": "\\b(?:\\d*\\.)?\\d+[Ff]\\b"
+        },
+        {
+          "name": "constant.numeric",
+          "match": "\\b(?:\\d*\\.)?\\d+[Dd]|\\d*\\.\\d+\\b"
+        }
+      ]
+    },
+    "opcodes": {
+      "patterns": [
+        {
+          "name": "keyword.control",
+          "match": "(?<=\\s|^)[a-z][a-z1-9.]*(?=[\\s>]|$)"
+        },
+        {
+          "name": "keyword",
+          "match": "(?<=\\s|^)\\%[a-z][a-z1-9.]*(?=[\\s>]|$)"
+        }
+      ]
+    },
+    "tokens": {
+      "patterns": [
+        {
+          "name": "keyword.control.anchor.regexp",
+          "match": "\\^"
+        },
+        {
+          "name": "keyword.control.anchor.regexp",
+          "match": "\\$"
+        },
+        {
+          "name": "keyword.control.anchor.regexp",
+          "match": "\\."
+        }
+      ]
+    },
+    "checks": {
+      "patterns": [
+        {
+          "name": "keyword.control.anchor.regexp",
+          "match": "\\<[a-z]*"
+        },
+        {
+          "name": "keyword.control.anchor.regexp",
+          "match": "\\>"
+        }
+      ]
+    },
+    "groups": {
+      "patterns": [
+        {
+          "name": "punctuation.definition.group.regexp",
+          "match": "\\((\\?:?)?"
+        },
+        {
+          "name": "punctuation.definition.group.regexp",
+          "match": "\\)"
+        },
+        {
+          "name": "punctuation.definition.group.regexp",
+          "match": "\\|"
+        }
+      ]
+    },
+    "quantifiers": {
+      "patterns": [
+        {
+          "name": "keyword.operator.quantifier.regexp",
+          "match": "([?*+]|\\{\\d+((,)\\d*)?\\})\\??"
+        }
+      ]
+    }
+	},
+	"scopeName": "source.ilregex"
+}

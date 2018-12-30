@@ -17,7 +17,8 @@
     <PackageProjectUrl>https://github.com/trigger-death/TriggersTools.ILPatching</PackageProjectUrl>
     <RepositoryUrl>https://github.com/trigger-death/TriggersTools.ILPatching</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>patching, cil, il</PackageTags>
+    <PackageTags>patching, il, reflection, mono.cecil</PackageTags>
+    <PackageIconUrl>https://raw.githubusercontent.com/trigger-death/TriggersTools.ILPatching/master/NuGetIcon.png</PackageIconUrl>
   </PropertyGroup>
 
   <ItemGroup>

@@ -13,8 +13,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// Opcodes for <see cref="ILCheck"/>.
 	/// </summary>
 	public enum OpChecks {
-
-		/// <summary>No operation</summary>
+		/// <summary>No operation. Used in compiled regex to fill in empty groups.</summary>
 		Nop = 0,
 
 		// State Change
@@ -29,10 +28,10 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <summary>End of search input.</summary>
 		End,
 
-		/// <summary>Dummy opcheck quantifier that is attached to the previous opcheck.</summary>
+		/// <summary>This opcheck is a quantifier with no attachment.</summary>
 		Quantifier,
-		/// <summary>Dummy Opcheck used to signify start of consuming opchecks.</summary>
-		Consuming,
+		///// <summary>Dummy Opcheck used to signify start of consuming opchecks.</summary>
+		//Consuming,
 
 		// All opchecks listed after this are "consuming opchecks"
 
@@ -43,8 +42,8 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		OperandEquals,
 		/// <summary>Any instruction is allowed and is not checked.</summary>
 		Skip,
-		/// <summary>A custom method is used to check the instruction.</summary>
-		Predicate,
+		///// <summary>A custom method is used to check the instruction.</summary>
+		//Predicate,
 		/// <summary>Match just an OpCode.</summary>
 		OpCode,
 		/// <summary>Match an OpCode and operand.</summary>
@@ -68,7 +67,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="code">The code to check.</param>
 		/// <returns>True if the code consumes an IL instruction, otherwise false.</returns>
 		public static bool IsConsuming(this OpChecks code) {
-			return code > OpChecks.Consuming;
+			return code >= OpChecks.Operand;
 		}
 	}
 	/// <summary>
@@ -76,14 +75,21 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// </summary>
 	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public partial class ILCheck : IFormattable {
-
 		#region Constants
 
 		/// <summary>
 		/// Used for <see cref="CaptureIndex"/> to specified that this is not a capturing group/operand.
 		/// </summary>
 		internal const int NoCapture = -1;
-
+		/// <summary>
+		/// The default format applied with <see cref="ToString"/>.
+		/// </summary>
+		internal const string DefaultToStringFormat = "";
+		/// <summary>
+		/// The default format applied with <see cref="Print"/>.
+		/// </summary>
+		internal const string DefaultPrintFormat = "";
+		
 		#endregion
 
 		#region Fields
@@ -102,7 +108,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// This value is also used when <see cref="CaptureName"/> is null for
 		/// <see cref="OpChecks.OperandEquals"/>.
 		/// </summary>
-		public int CaptureIndex { get; internal set; }
+		public int CaptureIndex { get; internal set; } = NoCapture;
 		/// <summary>
 		/// The optional name used when capturing a group or operand.
 		/// This value is also used for <see cref="OpChecks.OperandEquals"/> when non-null.
@@ -176,22 +182,6 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			if (code != OpChecks.GroupStart && code != OpChecks.Operand)
 				IsCapture = false;
 		}
-		/*/// <summary>
-		/// Constructs a predicate opcheck.
-		/// </summary>
-		/// <param name="customPredicate">The custom predicate used for checking.</param>
-		internal ILCheck(ILInstructionPredicate customPredicate) {
-			Code = OpChecks.Predicate;
-			Predicate = (i, m) => customPredicate(i);
-		}
-		/// <summary>
-		/// Constructs a predicate opcheck.
-		/// </summary>
-		/// <param name="customPredicate">The custom predicate used for checking.</param>
-		internal ILCheck(ILInstructionMethodPredicate customPredicate) {
-			Code = OpChecks.Predicate;
-			Predicate = customPredicate;
-		}*/
 
 		#endregion
 
@@ -206,80 +196,59 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		}
 
 		#endregion
-		
-		#region IILCheck Implementation
+
+		#region Repeat
 
 		/// <summary>
-		/// Quantifies the last check by exactly the specified amount.
+		/// Clones and quantifies the check by exactly the specified amount.
 		/// </summary>
 		/// <param name="exactly">The number of times the last check must be matched.</param>
-		/// <returns>The IL check to pass to <see cref="ILRegex"/>.</returns>
+		/// <returns>The duplicated IL check to pass to <see cref="ILRegex"/>.</returns>
 		public ILCheck Repeat(int exactly) {
-			return Repeat(exactly, exactly, true);
+			return Repeat(new ILQuantifier(exactly, exactly, true));
 		}
 		/// <summary>
-		/// Quantifies the last check by the specified min and max range.
+		/// Clones and quantifies the check by the specified min and max range.
 		/// </summary>
 		/// <param name="min">The minimum number of times the last check must be matched.</param>
 		/// <param name="min">The maximum number of times the last check can be matched.</param>
 		/// <param name="greedy">True if the quantifier is greedy.</param>
-		/// <returns>The IL check to pass to <see cref="ILRegex"/>.</returns>
+		/// <returns>The duplicated IL check to pass to <see cref="ILRegex"/>.</returns>
 		public ILCheck Repeat(int min, int max, bool greedy = false) {
-			if (!Quantifier.IsOne)
-				throw new ILRegexException($"Cannot attach quantifier to an already quantified check {this}!");
-			ILCheck opCheck = Clone();
-			opCheck.Quantifier = new ILQuantifier(min, max, greedy);
-			return opCheck;
+			return Repeat(new ILQuantifier(min, max, greedy));
 		}
 		/// <summary>
-		/// Quantifies the last check by as many times as it wants, with a minimum of 0.
+		/// Clones and quantifies the check by as many times as it wants, with a minimum of 0.
 		/// </summary>
 		/// <param name="greedy">True if the quantifier is greedy.</param>
-		/// <returns>The IL check to pass to <see cref="ILRegex"/>.</returns>
+		/// <returns>The duplicated IL check to pass to <see cref="ILRegex"/>.</returns>
 		public ILCheck RepeatIndefinite(bool greedy = false) {
-			return Repeat(0, ILQuantifier.OrMore, greedy);
+			return Repeat(new ILQuantifier(0, ILQuantifier.OrMore, greedy));
 		}
 		/// <summary>
-		/// Quantifies the last check by as many times as it wants, with the specified minimum.
+		/// Clones and quantifies the check by as many times as it wants, with the specified minimum.
 		/// </summary>
 		/// <param name="min">The minimum number of times the last check must be matched.</param>
 		/// <param name="greedy">True if the quantifier is greedy.</param>
-		/// <returns>The IL check to pass to <see cref="ILRegex"/>.</returns>
+		/// <returns>The duplicated IL check to pass to <see cref="ILRegex"/>.</returns>
 		public ILCheck RepeatIndefinite(int min, bool greedy = false) {
-			return Repeat(min, ILQuantifier.OrMore, greedy);
+			return Repeat(new ILQuantifier(min, ILQuantifier.OrMore, greedy));
 		}
-
-		public ILCheck Repeat(ILQuantifier quantifier) {
-			if (!Quantifier.IsOne)
-				throw new ILRegexException($"Cannot attach quantifier to an already quantified check {this}!");
-			ILCheck opCheck = Clone();
-			opCheck.Quantifier = quantifier;
-			return opCheck;
-		}
-
-		#endregion
-
-		#region Private Helpers
-
 		/// <summary>
-		/// Throws an <see cref="ILRegexException"/> if the capture name is invalid.
+		/// Clones and quantifies the check by the specified quantifier.
 		/// </summary>
-		/// <param name="captureName">The capture name to test.</param>
-		/// 
-		/// <exception cref="ArgumentNullException">
-		/// <paramref name="captureName"/> is null and <paramref name="allowNull"/> is false.
-		/// </exception>
-		/// <exception cref="ILRegexException">
-		/// <paramref name="captureName"/> is not a valid capture name.
-		/// </exception>
-		internal static void ThrowIfInvalidCaptureName(string captureName, bool allowNull) {
-			if (captureName == null && !allowNull) {
-				throw new ArgumentNullException(nameof(captureName));
-			}
-			if (captureName != null && !ValidateCaptureRegex.IsMatch(captureName)) {
-				throw new ILRegexException($"Capture name \"{captureName}\" can only have alphanumeric characters, " +
-										   $"must not start with a digit, and cannot be empty!");
-			}
+		/// <param name="quantifier">The quantifier to add to the check.</param>
+		/// <returns>The duplicated IL check to pass to <see cref="ILRegex"/>.</returns>
+		public ILCheck Repeat(ILQuantifier quantifier) {
+			if (Code == OpChecks.GroupStart)
+				throw new ILRegexException($"Cannot attach quantifier {quantifier} to group start {this}!");
+			else if (Code == OpChecks.Alternative)
+				throw new ILRegexException($"Cannot attach quantifier {quantifier} to altervative {this}!");
+			//else if (!Quantifier.IsOne)
+			//	throw new ILRegexException($"Cannot attach quantifier {quantifier} to an already quantified check {this}!");
+			ILCheck check = Clone();
+			check.Quantifier = quantifier;
+			return check;
 		}
 
 		#endregion

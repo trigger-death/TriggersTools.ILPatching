@@ -15,51 +15,7 @@ namespace TriggersTools.ILPatching {
 		/// <param name="original">The original instruction to copy.</param>
 		/// <returns>The duplicated instruction.</returns>
 		public static Instruction CloneInstruction(this Instruction original) {
-			switch (original.Operand) {
-			// No operand
-			case null:
-				return Instruction.Create(original.OpCode);
-
-			// Basic operands
-			case int value:
-				return Instruction.Create(original.OpCode, value);
-			case long value:
-				return Instruction.Create(original.OpCode, value);
-			case byte value:
-				return Instruction.Create(original.OpCode, value);
-			case sbyte value:
-				return Instruction.Create(original.OpCode, value);
-			case float value:
-				return Instruction.Create(original.OpCode, value);
-			case double value:
-				return Instruction.Create(original.OpCode, value);
-			case string value:
-				return Instruction.Create(original.OpCode, value);
-
-			// Ref-a-Def-CallSite operands
-			case ParameterDefinition parameter:
-				return Instruction.Create(original.OpCode, parameter);
-			case VariableDefinition variable:
-				return Instruction.Create(original.OpCode, variable);
-			case FieldReference field:
-				return Instruction.Create(original.OpCode, field);
-			case MethodReference method:
-				return Instruction.Create(original.OpCode, method);
-			case TypeReference type:
-				return Instruction.Create(original.OpCode, type);
-			case CallSite site:
-				return Instruction.Create(original.OpCode, site);
-
-			// Nested instruction operands
-			case Instruction target:
-				return Instruction.Create(original.OpCode, target.CloneInstruction());
-			case Instruction[] targets:
-				return Instruction.Create(original.OpCode, targets.CloneInstructions());
-
-			// You're not supposed to be here
-			default:
-				throw new Exception($"CloneInstruction(): Unknown operand type '{original.Operand.GetType().FullName}'!");
-			}
+			return IL.CreateInstruction(original.OpCode, original.Operand);
 		}
 		/// <summary>
 		/// Creates a copy of an array of instructions.
@@ -149,6 +105,7 @@ namespace TriggersTools.ILPatching {
 				return (operand == null && thisOperand == null);
 
 			// Resolve variable/parameter indecies to definitions
+			// This applies for int (full) and byte (short)
 			if (method != null && operand is int operandIndex) {
 				if (opCode.IsParameterOpCode)
 					operand = method.Parameters[operandIndex];
@@ -167,17 +124,21 @@ namespace TriggersTools.ILPatching {
 			case VariableDefinition variable:
 				return (variable.Index == ((VariableDefinition) thisOperand).Index);
 			case MemberReference member:
-				return (member.FullName == ((MemberReference) thisOperand).FullName);
+				CallSite thisMember = (CallSite) thisOperand;
+				return (member.FullName        == thisMember.FullName &&
+						member.Module.FileName == thisMember.Module.FileName);
 			case CallSite callSite:
-				return (callSite.FullName == ((CallSite) thisOperand).FullName);
+				CallSite thisCallSite = (CallSite) thisOperand;
+				return (callSite.FullName        == thisCallSite.FullName &&
+						callSite.Module.FileName == thisCallSite.Module.FileName);
 			case Instruction instr:
-				return instr.EqualsInstruction((Instruction) thisOperand);
+				return (instr == ((Instruction) thisOperand));
 			case Instruction[] instrArray:
 				Instruction[] thisInstrArray = (Instruction[]) thisOperand;
 				if (instrArray.Length != thisInstrArray.Length)
 					return false;
 				for (int i = 0; i < instrArray.Length; i++) {
-					if (!instrArray[i].EqualsInstruction(thisInstrArray[i]))
+					if (instrArray[i] != thisInstrArray[i])
 						return false;
 				}
 				return true;
@@ -188,38 +149,5 @@ namespace TriggersTools.ILPatching {
 		}
 
 		#endregion
-
-		/*#region IsParameter/Variable
-
-		/// <summary>
-		/// Checks if the opcode refers to a parameter definition.
-		/// </summary>
-		/// <param name="opCode">The opcode to check.</param>
-		/// <returns>True if the opcode refers to a parameter definition.</returns>
-		private static bool IsParameterOpCode(AnyOpCode opCode) {
-			if (opCode.IsMulti) {
-				MultiOpCodes multi = opCode.MultiOpCode;
-				return (multi == MultiOpCodes.Ldarg  ||
-						multi == MultiOpCodes.Ldarga ||
-						multi == MultiOpCodes.Starg);
-			}
-			return opCode.OpCode.OperandType == OperandType.InlineArg;
-		}
-		/// <summary>
-		/// Checks if the opcode refers to a variable definition.
-		/// </summary>
-		/// <param name="opCode">The opcode to check.</param>
-		/// <returns>True if the opcode refers to a variable definition.</returns>
-		private static bool IsVariableOpCode(AnyOpCode opCode) {
-			if (opCode.IsMulti) {
-				MultiOpCodes multi = opCode.MultiOpCode;
-				return (multi == MultiOpCodes.Ldloc  ||
-						multi == MultiOpCodes.Ldloca ||
-						multi == MultiOpCodes.Stloc);
-			}
-			return opCode.OpCode.OperandType == OperandType.InlineVar;
-		}
-
-		#endregion*/
 	}
 }

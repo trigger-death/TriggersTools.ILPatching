@@ -249,9 +249,13 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 					level--;
 
 				if (indent >= 0) {
-					if (str.Length != 0)
-						str.AppendLine();
-					str.Append(' ', Math.Max(0, level * indent));
+					if (check.Code != OpChecks.GroupEnd || i == 0 ||
+						checks[i - 1].Code != OpChecks.GroupStart)
+					{
+						if (i != 0)
+							str.AppendLine();
+						str.Append(' ', Math.Max(0, level * indent));
+					}
 				}
 				str.Append(check.ToString(format, formatProvider));
 
@@ -321,17 +325,26 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 					level--;
 
 				if (indent >= 0) {
-					//if (str.Length != 0)
-					//	str.AppendLine();
-					Console.Write(new string(' ', Math.Max(0, level * indent)));
+					if (check.Code != OpChecks.GroupEnd || i == 0 ||
+						checks[i - 1].Code != OpChecks.GroupStart)
+					{
+						if (i != 0)
+							Console.WriteLine();
+						Console.Write(new string(' ', Math.Max(0, level * indent)));
+					}
 				}
 				check.Print(format, formatProvider);
 
 				if (check.Code == OpChecks.GroupStart)
 					level++;
-
 			}
 		}
+		#endregion
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => $"Checks = {Count}";
+
 		#endregion
 	}
 }

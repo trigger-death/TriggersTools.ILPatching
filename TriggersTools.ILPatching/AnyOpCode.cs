@@ -85,7 +85,8 @@ namespace TriggersTools.ILPatching {
 							MultiOpCode == MultiOpCodes.Ldarga ||
 							MultiOpCode == MultiOpCodes.Starg);
 				}
-				return OpCode.OperandType == OperandType.InlineArg;
+				return  OpCode.OperandType == OperandType.InlineArg ||
+						OpCode.OperandType == OperandType.ShortInlineArg;
 			}
 		}
 		/// <summary>
@@ -98,7 +99,8 @@ namespace TriggersTools.ILPatching {
 							MultiOpCode == MultiOpCodes.Ldloca ||
 							MultiOpCode == MultiOpCodes.Stloc);
 				}
-				return OpCode.OperandType == OperandType.InlineVar;
+				return  OpCode.OperandType == OperandType.InlineVar ||
+						OpCode.OperandType == OperandType.ShortInlineVar;
 			}
 		}
 
@@ -132,7 +134,7 @@ namespace TriggersTools.ILPatching {
 		/// </summary>
 		/// <returns>The string representation of the opcode.</returns>
 		public override string ToString() {
-			if (IsMulti) return $"${MultiOpCode.ToString().Replace('_', '.').ToLower()}";
+			if (IsMulti) return $"%{MultiOpCode.ToString().Replace('_', '.').ToLower()}";
 			return OpCode.ToString();
 		}
 		/// <summary>
@@ -180,6 +182,9 @@ namespace TriggersTools.ILPatching {
 		/// Parsing is case-insensitive and opcodes can either use '.'s or '_'s.
 		/// </remarks>
 		/// 
+		/// <exception cref="ArgumentNullException">
+		/// <paramref name="s"/> is null.
+		/// </exception>
 		/// <exception cref="FormatException">
 		/// The string does not represent a valid opcode.
 		/// </exception>
@@ -189,7 +194,7 @@ namespace TriggersTools.ILPatching {
 			if (s == "any")
 				return Any;
 			s = s.Replace('.', '_');
-			if (s.StartsWith("$")) {
+			if (s.StartsWith("%")) {
 				s = s.Substring(1);
 				if (!Enum.TryParse(s, true, out MultiOpCodes multiOpCode))
 					throw new FormatException($"Invalid MultiOpCode \"{original}\"!");
@@ -235,32 +240,18 @@ namespace TriggersTools.ILPatching {
 			return a == b.OpCode;
 		}
 
-		public static bool operator !=(AnyOpCode a, AnyOpCode b) {
-			return !(a == b);
-		}
-		public static bool operator !=(AnyOpCode a, MultiOpCodes b) {
-			return !(a == b);
-		}
-		public static bool operator !=(MultiOpCodes a, AnyOpCode b) {
-			return !(a == b);
-		}
-		public static bool operator !=(AnyOpCode a, OpCode b) {
-			return !(a == b);
-		}
-		public static bool operator !=(OpCode a, AnyOpCode b) {
-			return !(a == b);
-		}
-		
+		public static bool operator !=(AnyOpCode a, AnyOpCode b) => !(a == b);
+		public static bool operator !=(AnyOpCode a, MultiOpCodes b) => !(a == b);
+		public static bool operator !=(MultiOpCodes a, AnyOpCode b) => !(a == b);
+		public static bool operator !=(AnyOpCode a, OpCode b) => !(a == b);
+		public static bool operator !=(OpCode a, AnyOpCode b) => !(a == b);
+
 		#endregion
 
 		#region Casting
 
-		public static implicit operator AnyOpCode(OpCode opCode) {
-			return new AnyOpCode(opCode);
-		}
-		public static implicit operator AnyOpCode(MultiOpCodes locOpCode) {
-			return new AnyOpCode(locOpCode);
-		}
+		public static implicit operator AnyOpCode(OpCode opCode) => new AnyOpCode(opCode);
+		public static implicit operator AnyOpCode(MultiOpCodes locOpCode) => new AnyOpCode(locOpCode);
 
 		#endregion
 	}

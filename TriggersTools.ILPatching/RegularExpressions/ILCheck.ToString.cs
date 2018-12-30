@@ -75,7 +75,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// </summary>
 		/// <returns>The string representation of the ILCheck.</returns>
 		public override string ToString() {
-			return ToString(string.Empty, CultureInfo.CurrentCulture);
+			return ToString(DefaultToStringFormat, CultureInfo.CurrentCulture);
 		}
 		/// <summary>
 		/// Gets the string representation of the ILCheck with the specified format.
@@ -152,9 +152,6 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			}
 
 			string opCode = OpCode.ToString();
-			/*if (indentedOpCode && Code != OpChecks.OpCode && (Code != OpChecks.Operand || CaptureName != null)) {
-				opCode = opCode.PadRight(AnyOpCode.LongestOpCodeName);
-			}*/
 
 			switch (Code) {
 			case OpChecks.Nop: return $"<{prefix}>";
@@ -174,40 +171,98 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			case OpChecks.OpCode:
 				return $"<{prefix} {opCode}>";
 			case OpChecks.OpCodeOperand:
-				return $"<{prefix} {opCode}  {OperandToString(Operand)}>";
+				return $"<{prefix} {opCode}{(indented ? " " : "")} {OperandToString(Operand)}>";
 
 			case OpChecks.Operand:
 				if (CaptureName != null)
-					return $"<{prefix} {opCode}  '{CaptureName}'>";
+					return $"<{prefix} {opCode}{(indented ? " " : "")} '{CaptureName}'>";
 				else
 					return $"<{prefix} {opCode}>";
 			case OpChecks.OperandEquals:
 				if (CaptureName != null)
-					return $"<{prefix} {opCode}  '{CaptureName}'>";
+					return $"<{prefix} {opCode}{(indented ? " " : "")} '{CaptureName}'>";
 				else
-					return $"<{prefix} {opCode}  '{CaptureIndex}'>";
+					return $"<{prefix} {opCode}{(indented ? " " : "")} '{CaptureIndex}'>";
 
 			case OpChecks.FieldName:
 			case OpChecks.MethodName:
 			case OpChecks.TypeName:
 			case OpChecks.CallSiteName:
-				return $"<{prefix} {opCode}  \"{MemberName}\">";
+				return $"<{prefix} {opCode}{(indented ? " " : "")} \"{MemberName}\">";
 
 			case OpChecks.Quantifier:
 				return string.Empty; // Quantifiers are not shown in this method
 			}
 			return $"UNK: {Code}";
 		}
-		private string DebuggerDisplay => ToString();
+
+		#endregion
+
+		#region Print
+
+		/// <summary>
+		/// Outputs the ILCheck to the console with no format and syntax highlighting.
+		/// </summary>
+		/// 
+		/// <remarks>
+		/// ILCheck Format Flags:
+		/// Nq = No quantifier: The quantifier is not added, even when not exactly one.
+		/// U  = Upper: The prefix codes are output in uppercase.
+		/// I  = Indented: Prefix codes are indented to all align.
+		/// <para/>
+		/// Quantifier Format Flags:
+		/// Bo = Brace format only: Shorthand tokens ?/*/+ will not be used.
+		/// M  = Mandatory: String will not be empty if <see cref="ILQuantifier.IsOne"/> is true.
+		/// </remarks>
+		/// 
+		/// <exception cref="FormatException">
+		/// Unknown flags were passed in <paramref name="format"/>.
+		/// </exception>
 		public void Print() {
-			Print("I1", CultureInfo.CurrentCulture);
+			Print(DefaultPrintFormat, CultureInfo.CurrentCulture);
 		}
-		public void Print(int indent) {
-			Print($"I{indent}", CultureInfo.CurrentCulture);
-		}
+		/// <summary>
+		/// Outputs the ILCheck to the console with the specified format and syntax highlighting.
+		/// </summary>
+		/// <param name="format">The string format to use.</param>
+		/// 
+		/// <remarks>
+		/// ILCheck Format Flags:
+		/// Nq = No quantifier: The quantifier is not added, even when not exactly one.
+		/// U  = Upper: The prefix codes are output in uppercase.
+		/// I  = Indented: Prefix codes are indented to all align.
+		/// <para/>
+		/// Quantifier Format Flags:
+		/// Bo = Brace format only: Shorthand tokens ?/*/+ will not be used.
+		/// M  = Mandatory: String will not be empty if <see cref="ILQuantifier.IsOne"/> is true.
+		/// </remarks>
+		/// 
+		/// <exception cref="FormatException">
+		/// Unknown flags were passed in <paramref name="format"/>.
+		/// </exception>
 		public void Print(string format) {
 			Print(format, CultureInfo.CurrentCulture);
 		}
+		/// <summary>
+		/// Outputs the ILCheck to the console with the specified format and syntax highlighting.
+		/// </summary>
+		/// <param name="format">The string format to use.</param>
+		/// <param name="formatProvider">Unused.</param>
+		/// 
+		/// <remarks>
+		/// ILCheck Format Flags:
+		/// Nq = No quantifier: The quantifier is not added, even when not exactly one.
+		/// U  = Upper: The prefix codes are output in uppercase.
+		/// I  = Indented: Prefix codes are indented to all align.
+		/// <para/>
+		/// Quantifier Format Flags:
+		/// Bo = Brace format only: Shorthand tokens ?/*/+ will not be used.
+		/// M  = Mandatory: String will not be empty if <see cref="ILQuantifier.IsOne"/> is true.
+		/// </remarks>
+		/// 
+		/// <exception cref="FormatException">
+		/// Unknown flags were passed in <paramref name="format"/>.
+		/// </exception>
 		public void Print(string format, IFormatProvider formatProvider) {
 			bool noQuantifier = FormatUtils.HasToken("Nq", ref format);
 
@@ -225,7 +280,6 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 				}
 			}
 			Console.ResetColor();
-			Console.WriteLine();
 		}
 		private void PrintNoQuantifier(ref string format) {
 			bool upper = FormatUtils.HasToken("U", ref format);
@@ -240,9 +294,6 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			}
 
 			string opCode = OpCode.ToString();
-			/*if (indentedOpCode && Code != OpChecks.OpCode && (Code != OpChecks.Operand || CaptureName != null)) {
-				opCode = opCode.PadRight(AnyOpCode.LongestOpCodeName);
-			}*/
 
 			if (prefix != null) {
 				Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -329,23 +380,20 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 				else {
 					Console.ForegroundColor = ConsoleColor.Gray;
 				}
-				Console.Write($"  {operand}");
+				Console.Write($"{(indented ? " " : "")} {operand}");
 			}
 			if (prefix != null) {
 				Console.ForegroundColor = ConsoleColor.DarkYellow;
 				Console.Write(">");
 			}
-			//Console.ResetColor();
 		}
 
 
 		public static string OperandToString(object operand) {
 			if (operand == null)
 				return "null";
-			switch (operand) {
-			//case bool value:
-			//	return value.ToString();
 
+			switch (operand) {
 			case int value:
 				return $"{value}";
 			case long value:
@@ -381,6 +429,12 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			}
 			return null;
 		}
+
+		#endregion
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => ToString();
 
 		#endregion
 	}

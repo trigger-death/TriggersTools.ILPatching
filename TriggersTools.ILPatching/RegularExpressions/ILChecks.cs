@@ -27,7 +27,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// Creates an <see cref="ILRegex"/> group start to match the following checks.
 		/// </summary>
 		/// <returns>The IL check to pass to <see cref="ILPatternBuilder"/>.</returns>
-		public static ILCheck GroupStart => new ILCheck(OpChecks.GroupStart) { IsCapture = false };
+		public static ILCheck GroupStart => new ILCheck(OpChecks.GroupStart);
 		/// <summary>
 		/// Creates an <see cref="ILRegex"/> check for the ending of a group.
 		/// </summary>
@@ -71,7 +71,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="opCode">The opcode to match.</param>
 		/// <returns>The IL check to pass to <see cref="ILPatternBuilder"/>.</returns>
 		public static ILCheck CaptureOperand(AnyOpCode opCode) {
-			return new ILCheck(OpChecks.Operand) { OpCode = opCode };
+			return new ILCheck(OpChecks.Operand) { OpCode = opCode, IsCapture = true };
 		}
 		/// <summary>
 		/// Creates an <see cref="ILRegex"/> check for capturing the value of an operand.
@@ -80,8 +80,8 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="captureName">The name of the capture.</param>
 		/// <returns>The IL check to pass to <see cref="ILPatternBuilder"/>.</returns>
 		public static ILCheck CaptureOperand(AnyOpCode opCode, string captureName) {
-			ILCheck.ThrowIfInvalidCaptureName(captureName, false);
-			return new ILCheck(OpChecks.Operand) { OpCode = opCode, CaptureName = captureName };
+			IL.ThrowIfInvalidCaptureName(captureName, false);
+			return new ILCheck(OpChecks.Operand) { OpCode = opCode, CaptureName = captureName, IsCapture = true };
 		}
 		/// <summary>
 		/// Creates an <see cref="ILRegex"/> check for comparing the value of an already-captured operand.
@@ -90,7 +90,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="captureName">The capture name of the operand.</param>
 		/// <returns>The IL check to pass to <see cref="ILPatternBuilder"/>.</returns>
 		public static ILCheck EqualsOperand(AnyOpCode opCode, string captureName) {
-			ILCheck.ThrowIfInvalidCaptureName(captureName, false);
+			IL.ThrowIfInvalidCaptureName(captureName, false);
 			return new ILCheck(OpChecks.OperandEquals) { OpCode = opCode, CaptureName = captureName };
 		}
 		/// <summary>
@@ -120,7 +120,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="checks">The checks to group together.</param>
 		/// <returns>The IL check to pass to <see cref="ILPatternBuilder"/>.</returns>
 		public static ILCheck CaptureGroupStart() {
-			return new ILCheck(OpChecks.GroupStart);
+			return new ILCheck(OpChecks.GroupStart) { IsCapture = true };
 		}
 		/// <summary>
 		/// Creates an <see cref="ILRegex"/> group start to capture the following checks.
@@ -128,8 +128,8 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="captureName">The capture name of the group.</param>
 		/// <returns>The IL check to pass to <see cref="ILPatternBuilder"/>.</returns>
 		public static ILCheck CaptureGroupStart(string captureName) {
-			ILCheck.ThrowIfInvalidCaptureName(captureName, false);
-			return new ILCheck(OpChecks.GroupStart) { CaptureName = captureName };
+			IL.ThrowIfInvalidCaptureName(captureName, false);
+			return new ILCheck(OpChecks.GroupStart) { CaptureName = captureName, IsCapture = true };
 		}
 		
 		/// <summary>
@@ -155,7 +155,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="checks">The checks to group together.</param>
 		/// <returns>The IL check to pass to <see cref="ILPatternBuilder"/>.</returns>
 		public static IEnumerable<ILCheck> CaptureGroup(string captureName, params ILCheck[] checks) {
-			ILCheck.ThrowIfInvalidCaptureName(captureName, false);
+			IL.ThrowIfInvalidCaptureName(captureName, false);
 			return Group(true, captureName, checks);
 		}
 

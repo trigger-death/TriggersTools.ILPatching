@@ -22,10 +22,6 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// </summary>
 		private readonly MethodDefinition method;
 		/// <summary>
-		/// The IL processor for the method.
-		/// </summary>
-		private readonly ILProcessor processor;
-		/// <summary>
 		/// The instruction set for the method.
 		/// </summary>
 		private readonly Instruction[] instructions;
@@ -49,6 +45,14 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// The group level of the regex. Level is always 1 or greater.
 		/// </summary>
 		private int level;
+		/// <summary>
+		/// The optional dictionary used to reference outside operands during operand comparison.
+		/// </summary>
+		private ILOperandDictionary operandDictionary;
+		/// <summary>
+		/// True if the newly captured operands should all be added to the dictionary.
+		/// </summary>
+		private bool addToOperandDictionary;
 /*#if DEBUG
 		/// <summary>
 		/// The farthest opcheck that was reached with a succesful match. This is used with
@@ -75,8 +79,8 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="instructions">The instruction set input.</param>
 		/// <param name="start">The starting search position in the instruction set.</param>
 		/// <param name="end">The ending search position in the instruction set.</param>
-		private ILRegexRunner(ILRegex regex, MethodDefinition method, ILProcessor processor,
-			Instruction[] instructions, int? start, int? end)
+		private ILRegexRunner(ILRegex regex, MethodDefinition method, Instruction[] instructions,
+			ILOperandDictionary operandDictionary, int? start, int? end)
 		{
 			if (start.HasValue) {
 				if (start.Value < 0)
@@ -95,8 +99,8 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 
 			this.regex = regex;
 			this.method = method;
-			this.processor = processor;
 			this.instructions = instructions;
+			this.operandDictionary = operandDictionary;
 			this.start = start ?? 0;
 			this.end = end ?? this.instructions.Length;
 			options = regex.Options;
@@ -119,10 +123,14 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <returns>
 		/// The IL match, <see cref="ILGroup.Success"/> determines if the match was succesful.
 		/// </returns>
-		public static ILMatch Run(ILRegex regex, MethodDefinition method, int? start, int? end) {
-			ILProcessor processor = method.Body.GetILProcessor();
-			Instruction[] instructions = processor.Body.Instructions.ToArray();
-			return new ILRegexRunner(regex, method, processor, instructions, start, end).Run();
+		public static ILMatch Run(ILRegex regex, MethodDefinition method,
+			ILOperandDictionary operandDictionary, int? start, int? end)
+		{
+			if (method == null)
+				throw new ArgumentNullException(nameof(method));
+			Instruction[] instructions = method.Body.Instructions.ToArray();
+			return new ILRegexRunner(
+				regex, method, instructions, operandDictionary, start, end).Run();
 		}
 		/// <summary>
 		/// Runs the IL regex with the search input and instruction set.
@@ -134,8 +142,12 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <returns>
 		/// The IL match, <see cref="ILGroup.Success"/> determines if the match was succesful.
 		/// </returns>
-		public static ILMatch Run(ILRegex regex, Instruction[] instructions, int? start, int? end) {
-			return new ILRegexRunner(regex, null, null, instructions, start, end).Run();
+		public static ILMatch Run(ILRegex regex, Instruction[] instructions,
+			ILOperandDictionary operandDictionary, int? start, int? end)
+		{
+			if (instructions == null)
+				throw new ArgumentNullException(nameof(instructions));
+			return new ILRegexRunner(regex, null, instructions, operandDictionary, start, end).Run();
 		}
 		/// <summary>
 		/// Runs the IL regex pattern and attempts to match the input.
@@ -146,7 +158,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		private ILMatch Run() {
 
 			MatchState initialState = new MatchState {
-				OpCheck  = opChecks[0], // RegexStart
+				OpCheck  = opChecks[0], // Nop (Regex Start)
 				Started  = true,
 			};
 			QuantifierMatch initialMatch = new QuantifierMatch {
@@ -172,7 +184,10 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 					if (level != 0)
 						Console.Write("");
 					var lastMatch = rootGroup.Matches.Peek();
-					return new ILMatch(regex, method, lastMatch.Groups, lastMatch.Operands);
+					ILMatch match = new ILMatch(regex, method, lastMatch.Groups, lastMatch.Operands);
+					if (addToOperandDictionary)
+						operandDictionary.AddMatch(match);
+					return match;
 				}
 			}
 			return ILMatch.EmptyMatch;

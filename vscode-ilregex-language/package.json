@@ -1,0 +1,27 @@
+{
+  "name": "ilregex-language",
+  "displayName": "ILRegex Language",
+  "description": "Add language support for TriggersTools.ILPatching ILRegex.",
+  "version": "0.0.1",
+	"publisher": "trigger_death",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.30.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "ilregex",
+      "aliases": ["ILRegex", "ilregex"],
+      "extensions": [".ilregex"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "ilregex",
+      "scopeName": "source.ilregex",
+      "path": "./syntaxes/ilregex.tmLanguage.json"
+    }]
+  }
+}

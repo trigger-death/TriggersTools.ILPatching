@@ -1,0 +1,23 @@
+(?:
+  <op  %ldloc>
+  <op  brfalse>
+  <fld ldsfld  "Main::itemText">
+  <cap %ldloc  'i'>
+  <op  ldelem.ref>
+  <fld ldfld  "ItemText::coinText">
+  <op  brfalse>
+  .*?
+){2}
+(?'start')
+.*?
+<fld ldsfld  "Main::fontMouseText">
+<op  %ldloc>
+<mth callvirt  "DynamicSpriteFont::MeasureString">
+<cap %stloc  'vector'>
+.*?
+<op  ldc.i4  246>
+<op  ldc.i4  138>
+<op  ldc.i4.s  96sb>
+<op  newobj>
+<op  stfld>
+(?'end')

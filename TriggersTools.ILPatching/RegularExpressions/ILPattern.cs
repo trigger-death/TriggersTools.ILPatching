@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using TriggersTools.ILPatching.Internal;
@@ -11,6 +14,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// <summary>
 	/// An immutable <see cref="ILRegex"/> pattern.
 	/// </summary>
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public partial class ILPattern : IReadOnlyList<ILCheck>, IFormattable {
 		#region Constants
 		
@@ -54,32 +58,24 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 
 		private static IEnumerable<ILCheck> PrepareChecks(IEnumerable<ILCheck> checks) {
 			ILCheck lastCheck = null;
-			bool lastCheckQuantified = false;
 			foreach (ILCheck check in checks) {
 				if (check.Code == OpChecks.Quantifier && lastCheck != null && lastCheck.Quantifier.IsOne &&
 					lastCheck.Code != OpChecks.Quantifier && lastCheck.Code != OpChecks.GroupStart &&
-					!lastCheckQuantified)
+					lastCheck.Code != OpChecks.Alternative)
 				{
-					/*if (lastCheck == null)
-						throw new ILRegexException($"Unexpected quantifier check {check.Quantifier} at beginning of pattern!");
-					else if (!lastCheck.Quantifier.IsOne || lastCheckQuantified)
-						throw new ILRegexException($"Cannot attach quantifier to an already-quantified check {lastCheck}!");*/
-					lastCheck = lastCheck.Repeat(check.Quantifier); // This clones the (sort of) immutable ILCheck
-					yield return lastCheck;
-					lastCheckQuantified = true;
+					lastCheck = lastCheck.Repeat(check.Quantifier);
 					continue;
 				}
-				if (lastCheck != null && !lastCheckQuantified)
+				if (lastCheck != null)
 					yield return lastCheck;
 				lastCheck = check;
-				lastCheckQuantified = false;
 			}
 			if (lastCheck != null)
 				yield return lastCheck;
 		}
 
 		#endregion
-		
+
 		#region Parsing
 
 		/// <summary>
@@ -87,8 +83,63 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// </summary>
 		/// <param name="s">The string representation of the pattern to parse.</param>
 		/// <returns>The parsed pattern.</returns>
-		public ILPattern Parse(string s) {
+		/// 
+		/// <exception cref="ArgumentNullException">
+		/// <paramref name="s"/> is null.
+		/// </exception>
+		/// <exception cref="ArgumentException">
+		/// A check's capture name is not a valid regex capture name.
+		/// </exception>
+		/// <exception cref="FormatException">
+		/// A check was improperly formatted. Or an unexpected token was encountered.
+		/// </exception>
+		public static ILPattern Parse(string s) {
 			return new ILPattern(ILCheck.ParseMany(s));
+		}
+		/// <summary>
+		/// Parses the text from a file into an <see cref="ILRegex"/> pattern.
+		/// </summary>
+		/// <param name="filePath">The file path to get the text from.</param>
+		/// <returns>The parsed pattern.</returns>
+		/// 
+		/// <exception cref="ArgumentException">
+		/// <paramref name="filePath"/> is a zero-length string, contains only white space, or contains one
+		/// or more invalid characters as defined by <see cref="Path.InvalidPathChars"/>. Or A check's
+		/// capture name is not a valid regex capture name.
+		/// </exception>
+		/// <exception cref="ArgumentNullException">
+		/// <paramref name="filePath"/> is null.
+		/// </exception>
+		/// <exception cref="PathTooLongException">
+		/// The specified path, file name, or both exceed the system-defined maximum length. For example, on
+		/// Windows-based platforms, paths must be less than 248 characters, and file names must be less than
+		/// 260 characters.
+		/// </exception>
+		/// <exception cref="DirectoryNotFoundException">
+		/// The specified path is invalid (for example, it is on an unmapped drive).
+		/// </exception>
+		/// <exception cref="IOException">
+		/// An I/O error occurred while opening the file.
+		/// </exception>
+		/// <exception cref="UnauthorizedAccessException">
+		/// <paramref name="filePath"/> specified a file that is read-only.-or- This operation is not
+		/// supported on the current platform.-or- path specified a directory.-or- The caller does not have
+		/// the required permission.
+		/// </exception>
+		/// <exception cref="FileNotFoundException">
+		/// The file specified in path was not found.
+		/// </exception>
+		/// <exception cref="NotSupportedException">
+		/// <paramref name="filePath"/> is in an invalid format.
+		/// </exception>
+		/// <exception cref="SecurityException">
+		/// The caller does not have the required permission.
+		/// </exception>
+		/// <exception cref="FormatException">
+		/// A check was improperly formatted. Or an unexpected token was encountered.
+		/// </exception>
+		public static ILPattern FromFile(string filePath) {
+			return Parse(File.ReadAllText(filePath));
 		}
 
 		#endregion

@@ -4,395 +4,17 @@ using System.IO;
 using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using TriggersTools.ILPatching.RegularExpressions;
 using FieldAttributes = Mono.Cecil.FieldAttributes;
 
 namespace TriggersTools.ILPatching {
 	/// <summary>
-	/// The main helper class for scanning and modifying assemblies.
+	/// The main class for IL operations to modify methods or create instructions.
 	/// </summary>
 	/// <remarks>
 	/// https://github.com/dougbenham/TerrariaPatcher/blob/master/IL.cs
 	/// </remarks>
-	public static class IL {
-		#region Methods
-		//--------------------------------
-		#region Getters
-			
-		/// <summary>
-		/// Gets the number of instructions in the method.
-		/// </summary>
-		/// <param name="method">The method definition to get the instruction count from.</param>
-		/// <returns>The instruction count.</returns>
-		public static int InstructionCount(MethodDefinition method) {
-			return method.Body.Instructions.Count;
-		}
-
-		#endregion
-		//--------------------------------
-		#region Prepend
-
-		/// <summary>
-		/// Prepents instructions to the beginning of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to prepend instructions to.</param>
-		/// <param name="instructions">The instructions to prepend.</param>
-		/// <returns>The index of the next instruction after the last prepended instruction.</returns>
-		public static int MethodPrepend(MethodDefinition method, params Instruction[] instructions) {
-			return MethodInsert(method, 0, instructions);
-		}
-
-		#endregion
-		//--------------------------------
-		#region Append
-
-		/// <summary>
-		/// Appends instructions to the end of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to append instructions to.</param>
-		/// <param name="instructions">The instructions to append.</param>
-		/// <returns>The index of the next instruction after the last appended instruction.</returns>
-		public static int MethodAppend(MethodDefinition method, params Instruction[] instructions) {
-			return MethodInsert(method, InstructionCount(method), instructions);
-		}
-
-		#endregion
-		//--------------------------------
-		#region Insert
-		
-		/// <summary>
-		/// Inserts instructions into the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to insert instructions into.</param>
-		/// <param name="index">The index to insert the instruction at.</param>
-		/// <param name="instructions">The instructions to insert.</param>
-		/// <returns>The index of the next instruction after the last inserted instruction.</returns>
-		public static int MethodInsert(MethodDefinition method, int index, params Instruction[] instructions) {
-			foreach (var instr in instructions) {
-				method.Body.Instructions.Insert(index, instr);
-				index++;
-			}
-			return index;
-		}
-
-		#endregion
-		//--------------------------------
-		#region Replace
-		
-		/// <summary>
-		/// Replaces all of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to replace the with new instructions.</param>
-		/// <param name="instructions">The instructions to replace with.</param>
-		/// <returns>The index of the next instruction after the last new instruction.</returns>
-		public static int MethodOverwrite(MethodDefinition method, params Instruction[] instructions) {
-			method.Body.Instructions.Clear();
-			foreach (var instr in instructions) {
-				method.Body.Instructions.Add(instr);
-			}
-			return instructions.Length;
-		}
-		/// <summary>
-		/// Replaces all of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to replace the with new instructions.</param>
-		/// <param name="clearLocals">True if all local variables should be cleared.</param>
-		/// <param name="instructions">The instructions to replace with.</param>
-		/// <returns>The index of the next instruction after the last new instruction.</returns>
-		public static int MethodOverwrite(MethodDefinition method, bool clearLocals,
-			params Instruction[] instructions)
-		{
-			method.Body.Instructions.Clear();
-			if (clearLocals)
-				method.Body.Variables.Clear();
-			foreach (var instr in instructions) {
-				method.Body.Instructions.Add(instr);
-			}
-			return instructions.Length;
-		}
-		/// <summary>
-		/// Replaces a single instruction of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to replace an instruction in.</param>
-		/// <param name="index">The index of the only instruction to replace.</param>
-		/// <param name="instructions">The instructions to replace the single instruction with.</param>
-		/// <returns>The index of the next instruction after the last new instruction.</returns>
-		public static int MethodReplaceSingle(MethodDefinition method, int index,
-			params Instruction[] instructions)
-		{
-			method.Body.Instructions.RemoveAt(index);
-			foreach (var instr in instructions) {
-				method.Body.Instructions.Insert(index, instr);
-				index++;
-			}
-			return index;
-		}
-		/// <summary>
-		/// Replaces a range of instructions in the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to replace instructions in.</param>
-		/// <param name="start">The index of the first instruction to replace.</param>
-		/// <param name="end">The index after the last instruction to replace.</param>
-		/// <param name="instructions">The instructions to replace the range of instructions with.</param>
-		/// <returns>The index of the next instruction after the last new instruction.</returns>
-		public static int MethodReplaceRange(MethodDefinition method, int start, int end,
-			params Instruction[] instructions)
-		{
-			for (int i = start; i < end; i++) {
-				method.Body.Instructions.RemoveAt(start);
-			}
-			foreach (var instr in instructions) {
-				method.Body.Instructions.Insert(start, instr);
-				start++;
-			}
-			return start;
-		}
-		/// <summary>
-		/// Replaces the start of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to replace instructions in.</param>
-		/// <param name="end">
-		/// The index after the last instruction to replace from the start of the method.
-		/// </param>
-		/// <param name="instructions">The instructions to replace the start of instructions with.</param>
-		/// <returns>The index of the next instruction after the last new instruction.</returns>
-		public static int MethodReplaceStart(MethodDefinition method, int end,
-			params Instruction[] instructions)
-		{
-			return MethodReplaceRange(method, 0, end, instructions);
-		}
-		/**<summary></summary>*/
-		/// <summary>
-		/// Replaces the end of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to replace instructions in.</param>
-		/// <param name="start">
-		/// The index of the first instruction to replace until the end of the method.
-		/// </param>
-		/// <param name="instructions">The instructions to replace the end of instructions with.</param>
-		/// <returns>The index of the next instruction after the last new instruction.</returns>
-		public static int MethodReplaceEnd(MethodDefinition method, int start,
-			params Instruction[] instructions)
-		{
-			return MethodReplaceRange(method, start, InstructionCount(method), instructions);
-		}
-
-		#endregion
-		//--------------------------------
-		#region Remove
-		
-		/// <summary>
-		/// Clears the specified method of all instructions.
-		/// </summary>
-		/// <param name="method">The method definition to clear instructions from.</param>
-		public static void MethodClear(MethodDefinition method) {
-			method.Body.Instructions.Clear();
-		}
-		/// <summary>
-		/// Clears the specified method of all instructions.
-		/// </summary>
-		/// <param name="method">The method definition to clear instructions from.</param>
-		public static void MethodClear(MethodDefinition method, bool clearLocals) {
-			method.Body.Instructions.Clear();
-			if (clearLocals)
-				method.Body.Variables.Clear();
-		}
-		/// <summary>
-		/// Removes a single instruction in the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to remove an instruction from.</param>
-		/// <param name="index">The index of the instruction to remove.</param>
-		public static void MethodRemoveSingle(MethodDefinition method, int index) {
-			method.Body.Instructions.RemoveAt(index);
-		}
-		/// <summary>
-		/// Removes a range of instructions in the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to remove instructions from.</param>
-		/// <param name="start">The index of the first instruction to remove.</param>
-		/// <param name="end">The index after the last instruction to remove.</param>
-		public static void MethodRemoveRange(MethodDefinition method, int start, int end) {
-			for (int i = start; i < end; i++) {
-				method.Body.Instructions.RemoveAt(start);
-			}
-		}
-		/// <summary>
-		/// Removes the start of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to remove instructions from.</param>
-		/// <param name="end">
-		/// The index after the last instruction to remove from the start of the method.
-		/// </param>
-		public static void MethodRemoveStart(MethodDefinition method, int end) {
-			MethodRemoveRange(method, 0, end);
-		}
-		/// <summary>
-		/// Removes the end of the specified method.
-		/// </summary>
-		/// <param name="method">The method definition to remove instructions from.</param>
-		/// <param name="start">
-		/// The index of the first instruction to remove until the end of the method.
-		/// </param>
-		public static void MethodRemoveEnd(MethodDefinition method, int start) {
-			MethodRemoveRange(method, start, InstructionCount(method));
-		}
-
-		#endregion
-		//--------------------------------
-		#endregion
-		
-		#region Definitions
-
-		/// <summary>
-		/// Gets the last two '.' separated names in the full name.<para/>
-		/// Usually used to get the type and member name.
-		/// </summary>
-		/// <param name="fullName">The full name to get the last two names from.</param>
-		private static string[] GetTypeAndMemberName(string fullName) {
-			int memberStart = fullName.LastIndexOf('.');
-			if (memberStart != -1) {
-				int typeStart = fullName.LastIndexOf('.', memberStart - 1);
-				if (typeStart != -1) {
-					return new[] {
-						fullName.Substring(typeStart, memberStart - typeStart), // type
-						fullName.Substring(memberStart + 1), // member
-					};
-				}
-			}
-			throw new Exception($"Failed to get type and member name of '{fullName}'!");
-		}
-
-		/// <summary>
-		/// Gets the definition of an assembly's module.
-		/// </summary>
-		/// <param name="asmDefinition">The assembly definition containing the module.</param>
-		/// <param name="moduleName">The name of the module. (no .dll)</param>
-		public static ModuleDefinition GetModuleDefinition(AssemblyDefinition asmDefinition,
-			string moduleName)
-		{
-			ModuleDefinition moduleDefinition = asmDefinition.Modules
-				.FirstOrDefault(p => p.FileName == moduleName);
-
-			if (moduleDefinition == null)
-				throw new Exception($"Failed to locate '{moduleName}' module definition!");
-
-			return moduleDefinition;
-		}
-		/// <summary>
-		/// Gets the definition of a module's type.
-		/// </summary>
-		/// <param name="moduleDefinition">The module definition containing the type.</param>
-		public static TypeDefinition GetTypeDefinition(ModuleDefinition moduleDefinition, string typeName,
-			bool fullName = false)
-		{
-			TypeDefinition typeDefinition;
-			if (fullName) {
-				typeDefinition = moduleDefinition.Types
-					.FirstOrDefault(t => t.FullName == typeName);
-			}
-			else {
-				typeDefinition = moduleDefinition.Types
-					.FirstOrDefault(t => t.Name == typeName);
-			}
-			
-			if (typeDefinition == null)
-				throw new Exception($"Failed to locate '{typeName}' type definition!");
-
-			return typeDefinition;
-		}
-		/// <summary>
-		/// Gets the definition of a modfule's type. Only use this instead of GetTypeDefinition() when the type is not within the Terraria module (eg. an XNA type).
-		/// </summary>
-		public static TypeReference GetTypeReference(ModuleDefinition moduleDefinition, string fullTypeName) {
-			if (!moduleDefinition.TryGetTypeReference(fullTypeName, out TypeReference reference))
-				throw new Exception($"Failed to locate '{fullTypeName}' type reference!");
-
-			return reference;
-		}
-		/// <summary>
-		/// Gets the definition of a type's field.
-		/// </summary>
-		public static FieldDefinition GetFieldDefinition(TypeDefinition typeDefinition, string fieldName) {
-			FieldDefinition fieldDefinition = typeDefinition.Fields
-				.FirstOrDefault(f => f.Name == fieldName);
-
-			if (fieldDefinition == null)
-				throw new Exception($"Failed to locate '{typeDefinition.FullName}.{fieldName}' field definition!");
-
-			return fieldDefinition;
-		}
-		/// <summary>
-		/// Gets the definition of a type's field.
-		/// </summary>
-		public static FieldDefinition GetFieldDefinition(ModuleDefinition moduleDefinition, string fullName) {
-			string[] typeAndMember = GetTypeAndMemberName(fullName);
-			TypeDefinition typeDefinition = GetTypeDefinition(moduleDefinition, typeAndMember[0]);
-			return GetFieldDefinition(typeDefinition, typeAndMember[1]);
-		}
-		/// <summary>
-		/// Gets the definition of a type's property.
-		/// </summary>
-		public static PropertyDefinition GetPropertyDefinition(TypeDefinition typeDefinition, string propName) {
-			PropertyDefinition propDefinition = typeDefinition.Properties
-				.FirstOrDefault(p => p.Name == propName);
-
-			if (propDefinition == null)
-				throw new Exception($"Failed to locate '{typeDefinition.FullName}.{propName}' property definition!");
-
-			return propDefinition;
-		}
-		/// <summary>
-		/// Gets the definition of a type's property.
-		/// </summary>
-		public static PropertyDefinition GetPropertyDefinition(ModuleDefinition moduleDefinition, string fullName) {
-			string[] typeAndMember = GetTypeAndMemberName(fullName);
-			TypeDefinition typeDefinition = GetTypeDefinition(moduleDefinition, typeAndMember[0]);
-			return GetPropertyDefinition(typeDefinition, typeAndMember[1]);
-		}
-		/// <summary>
-		/// Gets the definition of a type's method.
-		/// </summary>
-		/// <param name="typeDefinition">The type to get the method from.</param>
-		/// <param name="methodName">The name of the method to look for.</param>
-		/// <param name="parameterCount">The optional required number of parameters.</param>
-		/// <param name="isStatic">The optional requirement of being static.</param>
-		/// <returns>The located method definition.</returns>
-		public static MethodDefinition GetMethodDefinition(TypeDefinition typeDefinition, string methodName,
-			int? parameterCount = null, bool? isStatic = null)
-		{
-			MethodDefinition methodDefinition;
-			if (parameterCount.HasValue) {
-				if (isStatic.HasValue) {
-					methodDefinition = typeDefinition.Methods
-						.FirstOrDefault(m => m.Name == methodName &&
-										m.IsStatic == isStatic.Value &&
-										m.Parameters.Count == parameterCount.Value);
-				}
-				else {
-					methodDefinition = typeDefinition.Methods
-						.FirstOrDefault(m => m.Name == methodName &&
-										m.Parameters.Count == parameterCount.Value);
-				}
-			}
-			else {
-				if (isStatic.HasValue) {
-					methodDefinition = typeDefinition.Methods
-						.FirstOrDefault(m => m.Name == methodName &&
-										m.IsStatic == isStatic.Value);
-				}
-				else {
-					methodDefinition = typeDefinition.Methods
-						.FirstOrDefault(m => m.Name == methodName);
-				}
-			}
-
-			if (methodDefinition == null)
-				throw new Exception($"Failed to locate '{typeDefinition.FullName}.{methodName}()' method definition!");
-
-			return methodDefinition;
-		}
-
-		#endregion
-
+	public static partial class IL {
 		#region AddStaticConstructor
 
 		/// <summary>
@@ -542,6 +164,10 @@ namespace TriggersTools.ILPatching {
 		/// </summary>
 		/// <param name="value">The value to assign with the load instruction.</param>
 		/// <returns>The created instruction.</returns>
+		/// 
+		/// <exception cref="ArgumentException">
+		/// <paramref name="value"/> has an unsupported type for this method.
+		/// </exception>
 		public static Instruction CreateLoadInstruction(object value) {
 			if (value == null)
 				return Instruction.Create(OpCodes.Ldnull);
@@ -584,63 +210,8 @@ namespace TriggersTools.ILPatching {
 				return Instruction.Create(OpCodes.Ldc_I8, unchecked((long) casted));
 
 			default:
-				throw new Exception($"Unsupported basic field type {value.GetType().Name}!");
+				throw new ArgumentException($"Unsupported basic field type {value.GetType().Name}!");
 			}
-		}
-
-		#endregion
-
-		#region MakeLargeAddressAware
-
-		/// <summary>
-		/// Patches the executable to allow more memory usage.<para/>
-		/// This is required after Mono.cecil writes to the assembly.
-		/// </summary>
-		public static void MakeLargeAddressAware(string file) {
-			using (var stream = File.Open(file, FileMode.Open, FileAccess.ReadWrite)) {
-				const int IMAGE_FILE_LARGE_ADDRESS_AWARE = 0x20;
-
-				BinaryReader reader = new BinaryReader(stream);
-				BinaryWriter writer = new BinaryWriter(stream);
-
-				if (reader.ReadInt16() != 0x5A4D)       //No MZ Header
-					return;
-
-				reader.BaseStream.Position = 0x3C;
-				int peloc = reader.ReadInt32();         //Get the PE header location.
-
-				reader.BaseStream.Position = peloc;
-				if (reader.ReadInt32() != 0x4550)       //No PE header
-					return;
-
-				reader.BaseStream.Position += 0x12;
-
-				long position = reader.BaseStream.Position;
-				short flags = reader.ReadInt16();
-				bool isLAA = (flags & IMAGE_FILE_LARGE_ADDRESS_AWARE) == IMAGE_FILE_LARGE_ADDRESS_AWARE;
-				if (isLAA)                          //Already Large Address Aware
-					return;
-
-				flags |= IMAGE_FILE_LARGE_ADDRESS_AWARE;
-
-				writer.Seek((int) position, SeekOrigin.Begin);
-				writer.Write(flags);
-				writer.Flush();
-			}
-		}
-
-		#endregion
-
-		#region GetAssemblyVersion
-
-		/// <summary>
-		/// Gets the version of the assembly.
-		/// </summary>
-		/// <param name="path">The path of the assembly file.</param>
-		/// <returns>The version of the assembly.</returns>
-		public static Version GetAssemblyVersion(string path) {
-			using (var assembly = AssemblyDefinition.ReadAssembly(path))
-				return assembly.Name.Version;
 		}
 
 		#endregion
@@ -682,6 +253,193 @@ namespace TriggersTools.ILPatching {
 				if (!method.IsSpecialName)
 					method.IsPublic = true;
 			}
+		}
+
+		#endregion
+
+		#region CreateInstruction
+
+		/// <summary>
+		/// Creates an <see cref="Instruction"/> using the operand with the specified name in the
+		/// <see cref="ILOperandDictionary"/>.
+		/// </summary>
+		/// <param name="opcode">The opcode of the instruction.</param>
+		/// <param name="ops">The operand dictionary to get the operand from.</param>
+		/// <param name="name">The name of the operand to get.</param>
+		/// <returns>The created instruction.</returns>
+		/// 
+		/// <exception cref="ArgumentNullException">
+		/// <paramref name="ops"/> or <paramref name="name"/> is null.
+		/// </exception>
+		/// <exception cref="KeyNotFoundException">
+		/// <paramref name="name"/> does not exist in <paramref name="ops"/>.
+		/// </exception>
+		public static Instruction CreateInstruction(OpCode opcode, ILOperandDictionary ops, string name) {
+			if (ops == null)
+				throw new ArgumentNullException(nameof(ops));
+			return CreateInstruction(opcode, ops[name]);
+		}
+		/// <summary>
+		/// Creates an <see cref="Instruction"/> using an operand of unknown type.
+		/// </summary>
+		/// <param name="opcode">The opcode of the instruction.</param>
+		/// <param name="operand">The operand of unknown type.</param>
+		/// <returns>The created instruction.</returns>
+		/// 
+		/// <exception cref="ArgumentNullException">
+		/// <paramref name="ops"/> or <paramref name="name"/> is null.
+		/// </exception>
+		/// <exception cref="ArgumentException">
+		/// <paramref name="operand"/> is not a valid operand type.
+		/// </exception>
+		public static Instruction CreateInstruction(OpCode opcode, object operand) {
+			switch (operand) {
+			// No operand
+			case null:
+				return Instruction.Create(opcode);
+
+			// Basic operands
+			case int value:
+				return Instruction.Create(opcode, value);
+			case long value:
+				return Instruction.Create(opcode, value);
+			case byte value:
+				return Instruction.Create(opcode, value);
+			case sbyte value:
+				return Instruction.Create(opcode, value);
+			case float value:
+				return Instruction.Create(opcode, value);
+			case double value:
+				return Instruction.Create(opcode, value);
+			case string value:
+				return Instruction.Create(opcode, value);
+
+			// Ref-a-Def-CallSite operands
+			case ParameterDefinition parameter:
+				return Instruction.Create(opcode, parameter);
+			case VariableDefinition variable:
+				return Instruction.Create(opcode, variable);
+			case FieldReference field:
+				return Instruction.Create(opcode, field);
+			case MethodReference method:
+				return Instruction.Create(opcode, method);
+			case TypeReference type:
+				return Instruction.Create(opcode, type);
+			case CallSite site:
+				return Instruction.Create(opcode, site);
+
+			// Nested instruction operands
+			case Instruction target:
+				return Instruction.Create(opcode, target);
+			case Instruction[] targets:
+				return Instruction.Create(opcode, targets);
+			
+			default:
+				throw new ArgumentException($"Invalid operand type '{operand.GetType().Name}'!", nameof(operand));
+			}
+		}
+
+		#endregion
+
+		#region IsValidOperandType
+
+		public static bool IsValidOperandType(object operand) {
+			switch (operand) {
+			// No operand
+			case null:
+
+			// Basic operands
+			case int _:
+			case long _:
+			case byte _:
+			case sbyte _:
+			case float _:
+			case double _:
+			case string _:
+
+			// Ref-a-Def-CallSite operands
+			case ParameterDefinition _:
+			case VariableDefinition _:
+			case FieldReference _:
+			case MethodReference _:
+			case TypeReference _:
+			case CallSite _:
+
+			// Nested instruction operands
+			case Instruction _:
+			case Instruction[] _:
+				return true;
+				
+			default:
+				return false;
+			}
+		}
+		public static bool IsValidOperandType(Type type) {
+			if (type == null)
+				throw new ArgumentNullException(nameof(type));
+			switch (Type.GetTypeCode(type)) {
+			case TypeCode.DBNull:
+			case TypeCode.Int32:
+			case TypeCode.Int64:
+			case TypeCode.Byte:
+			case TypeCode.SByte:
+			case TypeCode.Single:
+			case TypeCode.Double:
+			case TypeCode.String:
+				return true;
+			default:
+				return (type == typeof(ParameterDefinition) || type == typeof(TypeDefinition) ||
+						type == typeof(VariableDefinition)  || type == typeof(CallSite)       ||
+						type == typeof(FieldDefinition)     || type == typeof(Instruction)    ||
+						type == typeof(MethodDefinition)    || type == typeof(Instruction[]));
+			}
+		}
+
+		#endregion
+		
+		#region EqualsOperand
+
+		/// <summary>
+		/// Checks if the two specified operands are equal to each other.
+		/// </summary>
+		/// <param name="operandA">The first operand to compare.</param>
+		/// <param name="operandB">The second operand to compare.</param>
+		/// <returns>True if the operands are equal to each other.</returns>
+		public static bool EqualsOperand(object operandA, object operandB) {
+			if (operandA == null || operandB == null)
+				return (operandA == null && operandB == null);
+			
+			if (operandA.GetType() != operandB.GetType())
+				return false;
+
+			switch (operandA) {
+			case ParameterDefinition parameterA:
+				return (parameterA.Index == ((ParameterDefinition) operandB).Index);
+			case VariableDefinition variableA:
+				return (variableA.Index == ((VariableDefinition) operandB).Index);
+			case MemberReference memberA:
+				CallSite memberB = (CallSite) operandB;
+				return (memberA.FullName        == memberB.FullName &&
+						memberA.Module.FileName == memberB.Module.FileName);
+			case CallSite callSiteA:
+				CallSite callSiteB = (CallSite) operandB;
+				return (callSiteA.FullName        == callSiteB.FullName &&
+						callSiteA.Module.FileName == callSiteB.Module.FileName);
+			case Instruction instrA:
+				return (instrA == ((Instruction) operandB));
+			case Instruction[] instrArrayA:
+				Instruction[] instrArrayB = (Instruction[]) operandB;
+				if (instrArrayA.Length != instrArrayB.Length)
+					return false;
+				for (int i = 0; i < instrArrayA.Length; i++) {
+					if (instrArrayA[i] != instrArrayB[i])
+						return false;
+				}
+				return true;
+			}
+
+			// Primitive & string values
+			return operandA.Equals(operandB);
 		}
 
 		#endregion

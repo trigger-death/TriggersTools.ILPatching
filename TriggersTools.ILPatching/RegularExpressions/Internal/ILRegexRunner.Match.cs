@@ -185,6 +185,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		private bool MatchOpCheck(MatchState state) {
 			int instructionIndex = state.End;
 			ILCheck opCheck = state.OpCheck;
+			object operand;
 			bool success = false;
 			bool consuming = opCheck.IsConsuming;
 			if (consuming && instructionIndex >= end)
@@ -254,14 +255,24 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 				else if (opCheck.CaptureIndex >= 0 && opCheck.CaptureIndex < match.Operands.Length)
 					ilOperand = match.Operands[opCheck.CaptureIndex];
 
+
 				// Have we captured the requested operand?
-				if (ilOperand != null && ilOperand.Success)
+				if (ilOperand != null && ilOperand.Success) {
 					success = instruction.EqualsInstruction(method, opCheck.OpCode, ilOperand.Operand);
+					break;
+				}
+
+				// If we haven't captured an operand, check the operand dictionary. 
+				if (opCheck.CaptureName != null && operandDictionary != null &&
+					operandDictionary.TryGetValue(opCheck.CaptureName, out operand))
+				{
+					success = instruction.EqualsInstruction(method, opCheck.OpCode, operand);
+				}
 				break;
 
 			case OpChecks.Operand:
 				if (instruction.OpCode == opCheck.OpCode) {
-					object operand = instruction.Operand;
+					operand = instruction.Operand;
 					if (opCheck.OpCode.IsMulti)
 						operand = instruction.GetOperand(method); // method == null returns instruction.Operand
 					match.Operands[opCheck.CaptureIndex] =

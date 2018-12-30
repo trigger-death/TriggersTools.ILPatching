@@ -161,5 +161,11 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		}
 
 		#endregion
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => $"Checks = {Pattern.Count}, Options = {Options}";
+
+		#endregion
 	}
 }

@@ -17,6 +17,10 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <param name="checks">The checks to compile.</param>
 		/// <param name="groupCount">The output number of group captures that were found.</param>
 		/// <param name="operandCount">The output number of operand captures that were found.</param>
+		/// 
+		/// <exception cref="ILRegexException">
+		/// A quantifier is improperly placed. Or a group's start or end are mismatched.
+		/// </exception>
 		public static ILCheck[] Compile(IEnumerable<ILCheck> checks, out int groupCount,
 			out int operandCount)
 		{
@@ -55,27 +59,24 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			alternativesStack.Push(new List<ILCheck>());
 
 			ILCheck lastCheck = matchStart;
-			bool lastOpCheckQuantified = false;
 			foreach (ILCheck current in checks) {
 				ILCheck check = current;
 				// No need to clone quantifiers
 				if (check.Code == OpChecks.Quantifier) {
 					if (lastCheck == null)
-						throw new ILRegexException($"Unexpected quantifier check {check} at beginning of pattern!");
+						throw new ILRegexException($"Unexpected quantifier check {check.Quantifier} at beginning of pattern!");
 					else if (lastCheck.Code == OpChecks.GroupStart)
-						throw new ILRegexException($"Cannot attach quantifier {check} to group start {lastCheck}!");
+						throw new ILRegexException($"Cannot attach quantifier {check.Quantifier} to group start {lastCheck}!");
 					else if (lastCheck.Code == OpChecks.Alternative)
-						throw new ILRegexException($"Cannot attach quantifier {check} to altervative {lastCheck}!");
-					else if (!lastCheck.Quantifier.IsOne || lastOpCheckQuantified)
-						throw new ILRegexException($"Cannot attach quantifier to an already quantified check {lastCheck}!");
+						throw new ILRegexException($"Cannot attach quantifier {check.Quantifier} to altervative {lastCheck}!");
+					else if (!lastCheck.Quantifier.IsOne)
+						throw new ILRegexException($"Cannot attach quantifier {check.Quantifier} to an already quantified check {lastCheck}!");
+
 					lastCheck.Quantifier = check.Quantifier;
 					if (lastCheck.GroupOther != null)
 						lastCheck.GroupOther.Quantifier = check.Quantifier;
-					lastOpCheckQuantified = true;
 					continue;
 				}
-
-				lastOpCheckQuantified = false;
 
 				// Clone the opcheck so changes can be made to it.
 				check = check.Clone();

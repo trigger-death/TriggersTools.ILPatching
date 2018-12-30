@@ -17,13 +17,13 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <returns>True if the match was successful, otherwise false.</returns>
 		private bool Match(MatchState state) {
 			if (state.IsGroup) {
-				if (state.IsGreedy != options.HasFlag(ILRegexOptions.Greedy))
+				if (state.IsGreedy != options.HasFlag(ILRegexOptions.SwapGreedy))
 					return QuantifyGreedyGroup(state);
 				else
 					return QuantifyLazyGroup(state);
 			}
 			else {
-				if (state.IsGreedy != options.HasFlag(ILRegexOptions.Greedy))
+				if (state.IsGreedy != options.HasFlag(ILRegexOptions.SwapGreedy))
 					return QuantifyGreedyOpCheck(state);
 				else
 					return QuantifyLazyOpCheck(state);
@@ -258,7 +258,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 				$"<{state.OpCheckIndex.ToString().PadLeft(2)}>" + // OpCheck Index
 				$"[{(state.Count + (success || isContinue ? 0 : 1))}] " + // Match Count
 				$"{(isContinue ? "CONTINUE" : "MATCH").PadRight(8)} " + // Action
-				(result != null ? result : (success ? string.Empty : "FAILED"))); // Result
+				(result ?? (success ? string.Empty : "FAILED"))); // Result
 		}
 
 		private string DebugSpacing => new string('.', (level - 1) * 1);

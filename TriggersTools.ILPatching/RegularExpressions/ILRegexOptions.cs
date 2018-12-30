@@ -21,7 +21,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <summary>
 		/// Greedy quantifiers will be treated as lazy and vice-versa.
 		/// </summary>
-		Greedy = (1 << 1),
+		SwapGreedy = (1 << 1),
 /*#if DEBUG
 		/// <summary>
 		/// Return a the closest match to success when the regex fails to find a full match.
