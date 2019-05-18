@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Mono.Cecil.Cil;
 
 namespace TriggersTools.ILPatching.RegularExpressions {
@@ -6,6 +7,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// A captured IL Regex instruction group with information about its match.
 	/// </summary>
 	[Serializable]
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public class ILGroup {
 		#region Constants
 
@@ -93,6 +95,12 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// Gets the ending index of the capture in the instruction set.
 		/// </summary>
 		public int End { get; private protected set; }
+
+		#endregion
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => (Success ? $"Length = {Length}" : "No Capture");
 
 		#endregion
 	}

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Mono.Cecil.Cil;
 
 namespace TriggersTools.ILPatching.RegularExpressions {
@@ -6,6 +7,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// A captured IL Regex instruction opreand with information about its match and the associated operand.
 	/// </summary>
 	[Serializable]
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public sealed class ILOperand : ILGroup {
 		#region Constants
 
@@ -53,6 +55,12 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// </summary>
 		/// <returns>The operand as type <typeparamref name="T"/>.</returns>
 		public T ToOperand<T>() => (T) Operand;
+
+		#endregion
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => (Success ? ILPattern.OperandToString(Operand) : "No Capture");
 
 		#endregion
 	}

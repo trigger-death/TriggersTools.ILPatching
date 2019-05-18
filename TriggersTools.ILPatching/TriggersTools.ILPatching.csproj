@@ -9,16 +9,23 @@
   <PropertyGroup>
     <DefineConstants>TRACE;MONO</DefineConstants>
     <Version>0.0.1</Version>
-    <Copyright>Copyright © Robert Jordan 2018</Copyright>
+    <Copyright>Copyright © Robert Jordan $([System.DateTime]::Now.Year)</Copyright>
     <Authors>Robert Jordan</Authors>
     <Company>Trigger's Tools &amp; Games</Company>
-    <Description>A library with helpful methods for scanning and patching CIL instructions with Mono.Cecil</Description>
+    <Description>A library with methods for scanning and patching IL instructions with Mono.Cecil. Including Regular Expressions for IL.</Description>
     <PackageLicenseUrl>https://github.com/trigger-death/TriggersTools.ILPatching/blob/master/License.md</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/trigger-death/TriggersTools.ILPatching</PackageProjectUrl>
     <RepositoryUrl>https://github.com/trigger-death/TriggersTools.ILPatching</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>patching, il, reflection, mono.cecil</PackageTags>
     <PackageIconUrl>https://raw.githubusercontent.com/trigger-death/TriggersTools.ILPatching/master/NuGetIcon.png</PackageIconUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net45|AnyCPU'">
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>

@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Mono.Cecil;
+using Mono.Cecil.Cil;
 using TriggersTools.ILPatching.Internal;
 
 namespace TriggersTools.ILPatching.RegularExpressions {
@@ -339,6 +341,57 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 					level++;
 			}
 		}
+
+		#endregion
+
+		#region OperandToString
+		
+		/// <summary>
+		/// Outputs the operand object to an ILPattern-parsable string.
+		/// </summary>
+		/// <param name="operand">The operand to use.</param>
+		/// <returns>The ILPattern-parsable string representation of the operand.</returns>
+		public static string OperandToString(object operand) {
+			if (operand == null)
+				return "null";
+
+			switch (operand) {
+			case int value:
+				return $"{value}";
+			case long value:
+				return $"{value}L";
+			case byte value:
+				return $"{value}b";
+			case sbyte value:
+				return $"{value}sb";
+			case float value:
+				return $"{value}f";
+			case double value:
+				return $"{value}d";
+			case string value:
+				return $"\"{value}\"";
+
+			case ParameterDefinition value:
+				return $"arg:\"{value}\"";
+			case VariableDefinition value:
+				return $"loc:\"{value}\"";
+			case FieldReference value:
+				return $"fld:\"{value.FullName.Substring(value.FullName.IndexOf(' ') + 1)}\"";
+			case MethodReference value:
+				return $"mth:\"{value.FullName.Substring(value.FullName.IndexOf(' ') + 1)}\"";
+			case TypeReference value:
+				return $"typ:\"{value.FullName}\"";
+			case CallSite value:
+				return $"cal:\"{value.FullName}\"";
+
+			case Instruction value:
+				return $"ins:{value}";
+			case Instruction[] value:
+				return $"ina:[{string.Join(",", (object[]) value)}]";
+			}
+			return null;
+		}
+
 		#endregion
 
 		#region DebuggerDisplay

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Mono.Cecil.Cil;
 
 namespace TriggersTools.ILPatching.RegularExpressions {
@@ -9,6 +10,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// instructions.
 	/// </summary>
 	[Serializable]
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public class ILOperandDictionary : IDictionary<string, object> {
 		#region Fields
 
@@ -271,5 +273,11 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		}
 		
 		#endregion*/
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => $"Count = {Count}";
+
+		#endregion
 	}
 }

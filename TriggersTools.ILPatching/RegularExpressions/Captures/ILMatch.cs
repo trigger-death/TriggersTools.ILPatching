@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
@@ -7,6 +8,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 	/// A whole match for an IL Regular Expression.
 	/// </summary>
 	[Serializable]
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public class ILMatch : ILGroup {
 		#region Constants
 
@@ -388,6 +390,12 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		public string GetString(string name) {
 			return GetOperand<string>(name);
 		}
+
+		#endregion
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => (Success ? $"Length = {Length}, Groups = {Groups.Count}, Operands = {Operands.Count}" : "No Match");
 
 		#endregion
 	}

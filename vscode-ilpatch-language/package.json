@@ -1,7 +1,7 @@
 {
-  "name": "ilregex-language",
-  "displayName": "ILRegex Language",
-  "description": "Add language support for TriggersTools.ILPatching ILRegex.",
+  "name": "ilpatch-language",
+  "displayName": "ILPatcher Language",
+  "description": "Add language support for TriggersTools.ILPatching.",
   "version": "0.0.1",
 	"publisher": "trigger_death",
   "icon": "icon.png",
@@ -14,24 +14,13 @@
   "contributes": {
     "languages": [
       {
-        "id": "ilregex",
-        "aliases": ["ILRegex", "ilregex"],
-        "extensions": [".ilregex"],
-        "configuration": "./ilregex-language-configuration.json"
-      },
-      {
         "id": "ilpatch",
         "aliases": ["ILPatch", "ilpatch"],
         "extensions": [".ilpatch"],
-        "configuration": "./ilpatch-language-configuration.json"
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
-      {
-        "language": "ilregex",
-        "scopeName": "source.ilregex",
-        "path": "./syntaxes/ilregex.tmLanguage.json"
-      },
       {
         "language": "ilpatch",
         "scopeName": "source.ilpatch",
@@ -39,10 +28,6 @@
       }
     ],
     "configurationDefaults": {
-      "[ilregex]": {
-    		"editor.insertSpaces": true,
-    		"editor.tabSize": 2
-      },
       "[ilpatch]": {
     		"editor.insertSpaces": true,
     		"editor.tabSize": 2

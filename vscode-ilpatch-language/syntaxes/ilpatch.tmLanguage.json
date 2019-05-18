@@ -1,46 +1,59 @@
 {
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-	"name": "ILRegex",
+	"name": "ILPatch",
   "fileTypes": [
-    "ilregex",
-    "ILREGEX"
+    "ilpatch",
+    "ILPATCH"
   ],
 	"patterns": [
+    {
+      "include": "#ilpattern"
+    },
 		{
 			"include": "#comment"
 		},
 		{
 			"include": "#strings"
-		},
-		{
-			"include": "#captures"
-		},
-    {
-      "include": "#numerics"
-    },
-    {
-      "include": "#opcodes"
-    },
-    {
-      "include": "#tokens"
-    },
-    {
-      "include": "#checks"
-    },
-    {
-      "include": "#groups"
-    },
-    {
-      "include": "#quantifiers"
-    }
+		}
 	],
 	"repository": {
+    "ilpattern": {
+      "name": "constant.regexp.ilpatch",
+      "begin": "/",
+      "end": "/",
+      "patterns": [
+    		{
+    			"include": "#strings"
+    		},
+        {
+    			"include": "#captures"
+    		},
+        {
+          "include": "#numerics"
+        },
+        {
+          "include": "#opcodes"
+        },
+        {
+          "include": "#tokens"
+        },
+        {
+          "include": "#checks"
+        },
+        {
+          "include": "#groups"
+        },
+        {
+          "include": "#quantifiers"
+        }
+      ]
+    },
     "comment": {
       "patterns": [
         {
 					"captures": {
 						"1": {
-							"name": "meta.toc-list.banner.block.ilregex"
+							"name": "meta.toc-list.banner.block.ilpatch"
 						}
 					},
 					"match": "^/\\* =(\\s*.*?)\\s*= \\*/$\\n?",
@@ -50,20 +63,20 @@
 					"begin": "/\\*",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.comment.begin.ilregex"
+							"name": "punctuation.definition.comment.begin.ilpatch"
 						}
 					},
 					"end": "\\*/",
 					"endCaptures": {
 						"0": {
-							"name": "punctuation.definition.comment.end.ilregex"
+							"name": "punctuation.definition.comment.end.ilpatch"
 						}
 					},
-					"name": "comment.block.ilregex"
+					"name": "comment.block.ilpatch"
 				},
 				{
 					"match": "\\*/.*\\n",
-					"name": "invalid.illegal.stray-comment-end.ilregex"
+					"name": "invalid.illegal.stray-comment-end.ilpatch"
 				},
 				{
 					"begin": "(^[ \\t]+)?(?=//)",
@@ -89,7 +102,7 @@
       ]
     },
 		"strings": {
-			"name": "string.regexp",
+			"name": "string.regexp.ilregex",
 			"begin": "\"",
 			"end": "\"",
 			"patterns": [
@@ -236,5 +249,5 @@
       ]
     }
 	},
-	"scopeName": "source.ilregex"
+	"scopeName": "source.ilpatch"
 }

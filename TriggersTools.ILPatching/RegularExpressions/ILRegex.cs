@@ -540,8 +540,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		}
 
 		#endregion
-
-
+		
 		#region Parsing
 
 		/// <summary>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -10,6 +11,7 @@ namespace TriggersTools.ILPatching {
 	/// An opcode that can either represent a single standard <see cref="Mono.Cecil.Cil.OpCode"/> or
 	/// <see cref="MultiOpCodes"/>.
 	/// </summary>
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public struct AnyOpCode {
 		#region Constants
 
@@ -31,7 +33,7 @@ namespace TriggersTools.ILPatching {
 		/// <summary>
 		/// Gets the length of the longest opcode name.
 		/// </summary>
-		public static int LongestOpCodeNameLength { get; }
+		public static int LongestOpCodeNameLength { get; private set; }
 
 		#endregion
 
@@ -41,13 +43,48 @@ namespace TriggersTools.ILPatching {
 		/// Initializes the opcode map.
 		/// </summary>
 		static AnyOpCode() {
-			var opCodeMap = new Dictionary<string, OpCode>(StringComparer.InvariantCultureIgnoreCase);
 			foreach (FieldInfo field in typeof(OpCodes).GetFields(BindingFlags.Static | BindingFlags.Public)) {
-				if (field.FieldType == typeof(OpCode)) {
-					opCodeMap.Add(field.Name, (OpCode) field.GetValue(null));
-					LongestOpCodeNameLength = Math.Max(LongestOpCodeNameLength, field.Name.Length);
-				}
+				if (field.FieldType == typeof(OpCode))
+					AddOpCode(field.Name, (OpCode) field.GetValue(null));
 			}
+			// Aliases
+			AddOpCode("Brinst", OpCodes.Brtrue);
+			AddOpCode("Brinst_S", OpCodes.Brtrue_S);
+			AddOpCode("brnull", OpCodes.Brfalse);
+			AddOpCode("brnull_S", OpCodes.Brfalse_S);
+			AddOpCode("brzero", OpCodes.Brfalse);
+			AddOpCode("brzero_S", OpCodes.Brfalse_S);
+			AddOpCode("Ldelem_U8", OpCodes.Ldelem_I8);
+			AddOpCode("Ldind_U8", OpCodes.Ldind_I8);
+			// Ending in .'s
+			AddOpCode("Constrained_", OpCodes.Constrained);
+			AddOpCode("No_", OpCodes.No);
+			AddOpCode("Readonly_", OpCodes.Readonly);
+			AddOpCode("Tail_", OpCodes.Tail);
+			AddOpCode("Volatile_", OpCodes.Volatile);
+		}
+		private static void AddOpCode(string name, OpCode opcode) {
+			opCodeMap.Add(name, opcode);
+			LongestOpCodeNameLength = Math.Max(LongestOpCodeNameLength, name.Length);
+		}
+
+		#endregion
+
+		#region Static ListOpCodes
+
+		/// <summary>
+		/// Gets the names of all normal opcodes.
+		/// </summary>
+		/// <returns>An array of all normal opcode names.</returns>
+		public static string[] GetOpCodeNames() {
+			return opCodeMap.Keys.Select(n => n.Replace('_', '.').ToLower()).ToArray();
+		}
+		/// <summary>
+		/// Gets the names of all multi opcodes.
+		/// </summary>
+		/// <returns>An array of all multi opcode names.</returns>
+		public static string[] GetMultiOpCodeNames() {
+			return Enum.GetNames(typeof(MultiOpCodes)).Select(n => n.Replace('_', '.').ToLower()).ToArray();
 		}
 		
 		#endregion
@@ -137,6 +174,7 @@ namespace TriggersTools.ILPatching {
 			if (IsMulti) return $"%{MultiOpCode.ToString().Replace('_', '.').ToLower()}";
 			return OpCode.ToString();
 		}
+		private string DebuggerDisplay => ToString();
 		/// <summary>
 		/// Checks if this opcode and another object are equal.
 		/// </summary>
@@ -191,18 +229,15 @@ namespace TriggersTools.ILPatching {
 		public static AnyOpCode Parse(string s) {
 			string original = s;
 			s = s.ToLower();
-			if (s == "any")
-				return Any;
 			s = s.Replace('.', '_');
 			if (s.StartsWith("%")) {
-				s = s.Substring(1);
-				if (!Enum.TryParse(s, true, out MultiOpCodes multiOpCode))
-					throw new FormatException($"Invalid MultiOpCode \"{original}\"!");
-				return multiOpCode;
+				if (Enum.TryParse(s.Substring(1), true, out MultiOpCodes multiOpCode))
+					return multiOpCode;
+				throw new FormatException($"Invalid MultiOpCode \"{original}\"!");
 			}
-			if (!opCodeMap.TryGetValue(s, out OpCode opCode))
-				throw new FormatException($"Invalid OpCode \"{original}\"!");
-			return opCode;
+			if (opCodeMap.TryGetValue(s, out OpCode opCode))
+				return opCode;
+			throw new FormatException($"Invalid OpCode \"{original}\"!");
 		}
 		
 		#endregion

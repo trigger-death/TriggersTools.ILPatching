@@ -171,7 +171,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			case OpChecks.OpCode:
 				return $"<{prefix} {opCode}>";
 			case OpChecks.OpCodeOperand:
-				return $"<{prefix} {opCode}{(indented ? " " : "")} {OperandToString(Operand)}>";
+				return $"<{prefix} {opCode}{(indented ? " " : "")} {ILPattern.OperandToString(Operand)}>";
 
 			case OpChecks.Operand:
 				if (CaptureName != null)
@@ -273,8 +273,10 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 					// Test format validity
 					// An error will be thrown if the remaining quantifier format is not valid.
 					string quantifierStr = Quantifier.ToString(format);
-					if (!noQuantifier)
+					if (!noQuantifier) {
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
 						Console.Write(quantifierStr);
+					}
 				} catch (FormatException) {
 					throw new FormatException($"Invalid ILCheck format \"{originalFormat}\"!");
 				}
@@ -296,13 +298,15 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			string opCode = OpCode.ToString();
 
 			if (prefix != null) {
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.Write($"<{prefix}");
-				if (OpCode.IsMulti)
-					Console.ForegroundColor = ConsoleColor.Cyan;
-				else
-					Console.ForegroundColor = ConsoleColor.Blue;
-				Console.Write($" {opCode}");
+				if (Code != OpChecks.Nop) {
+					if (OpCode.IsMulti)
+						Console.ForegroundColor = ConsoleColor.Cyan;
+					else
+						Console.ForegroundColor = ConsoleColor.Blue;
+					Console.Write($" {opCode}");
+				}
 			}
 
 			string operand = null;
@@ -310,7 +314,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 			switch (Code) {
 			case OpChecks.Nop: break;
 			case OpChecks.Alternative:
-				Console.ForegroundColor = ConsoleColor.Gray;
+				Console.ForegroundColor = ConsoleColor.DarkGreen;
 				Console.Write("|");
 				break;
 			case OpChecks.Start:
@@ -345,7 +349,7 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 
 			case OpChecks.OpCode: break;
 			case OpChecks.OpCodeOperand:
-				operand = OperandToString(Operand); break;
+				operand = ILPattern.OperandToString(Operand); break;
 
 			case OpChecks.Operand:
 				if (CaptureName != null)
@@ -383,51 +387,9 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 				Console.Write($"{(indented ? " " : "")} {operand}");
 			}
 			if (prefix != null) {
-				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.ForegroundColor = ConsoleColor.Yellow;
 				Console.Write(">");
 			}
-		}
-
-
-		public static string OperandToString(object operand) {
-			if (operand == null)
-				return "null";
-
-			switch (operand) {
-			case int value:
-				return $"{value}";
-			case long value:
-				return $"{value}L";
-			case byte value:
-				return $"{value}b";
-			case sbyte value:
-				return $"{value}sb";
-			case float value:
-				return $"{value}f";
-			case double value:
-				return $"{value}d";
-			case string value:
-				return $"\"{value}\"";
-
-			case ParameterDefinition value:
-				return $"arg:\"{value}\"";
-			case VariableDefinition value:
-				return $"loc:\"{value}\"";
-			case FieldReference value:
-				return $"fld:\"{value.FullName.Substring(value.FullName.IndexOf(' ') + 1)}\"";
-			case MethodReference value:
-				return $"mth:\"{value.FullName.Substring(value.FullName.IndexOf(' ') + 1)}\"";
-			case TypeReference value:
-				return $"typ:\"{value.FullName}\"";
-			case CallSite value:
-				return $"cal:\"{value.FullName}\"";
-
-			case Instruction value:
-				return $"ins:{value}";
-			case Instruction[] value:
-				return $"ina:[{string.Join(",", (object[]) value)}]";
-			}
-			return null;
 		}
 
 		#endregion

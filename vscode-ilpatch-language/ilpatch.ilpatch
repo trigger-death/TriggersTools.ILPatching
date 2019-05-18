@@ -1,3 +1,5 @@
+
+/
 // Repeat twice before the start of the replacement
 (?:
   <op  %ldloc>
@@ -26,3 +28,4 @@
 <op  newobj>
 <op  stfld>
 (?'end')
+/

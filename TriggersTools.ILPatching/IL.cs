@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using TriggersTools.ILPatching.RegularExpressions;
-using FieldAttributes = Mono.Cecil.FieldAttributes;
+//using FieldAttributes = Mono.Cecil.FieldAttributes;
 
 namespace TriggersTools.ILPatching {
 	/// <summary>
@@ -42,8 +41,7 @@ namespace TriggersTools.ILPatching {
 		#endregion
 
 		#region Add/ModifyStaticField
-
-
+		
 		/// <summary>
 		/// Adds a new static field to a type.
 		/// </summary>
@@ -55,6 +53,9 @@ namespace TriggersTools.ILPatching {
 		public static FieldDefinition AddStaticField(TypeDefinition classType, string fieldName,
 			TypeReference fieldType, object value = null)
 		{
+			if (classType.Fields.FirstOrDefault(f => f.Name == fieldName) != null)
+				throw new ArgumentException($"A field with the name \"{fieldName}\" already exists in {classType.Name}!");
+
 			const FieldAttributes attributes = FieldAttributes.Static | FieldAttributes.Public;
 			FieldDefinition field = new FieldDefinition(fieldName, attributes, fieldType);
 			classType.Fields.Add(field);
@@ -418,13 +419,13 @@ namespace TriggersTools.ILPatching {
 			case VariableDefinition variableA:
 				return (variableA.Index == ((VariableDefinition) operandB).Index);
 			case MemberReference memberA:
-				CallSite memberB = (CallSite) operandB;
+				MemberReference memberB = (MemberReference) operandB;
 				return (memberA.FullName        == memberB.FullName &&
-						memberA.Module.FileName == memberB.Module.FileName);
+						memberA.Module.Assembly.Name.FullName == memberB.Module.Assembly.Name.FullName);
 			case CallSite callSiteA:
 				CallSite callSiteB = (CallSite) operandB;
 				return (callSiteA.FullName        == callSiteB.FullName &&
-						callSiteA.Module.FileName == callSiteB.Module.FileName);
+						callSiteA.Module.Assembly.Name.FullName == callSiteB.Module.Assembly.Name.FullName);
 			case Instruction instrA:
 				return (instrA == ((Instruction) operandB));
 			case Instruction[] instrArrayA:
@@ -440,6 +441,73 @@ namespace TriggersTools.ILPatching {
 
 			// Primitive & string values
 			return operandA.Equals(operandB);
+		}
+
+		#endregion
+
+		#region MatchMethods
+
+		/// <summary>
+		/// Tests if the methods match and throws an <see cref="Exception"/> with an explanation if they didn't.
+		/// </summary>
+		/// <param name="methodA">The first method to compare.</param>
+		/// <param name="methodB">The second method to compare.</param>
+		public static void MatchMethods(MethodDefinition methodA, MethodDefinition methodB) {
+			var instructionsA = methodA.Body.Instructions;
+			var instructionsB = methodA.Body.Instructions;
+			if (instructionsA.Count != instructionsB.Count) {
+				throw new Exception($"Method A's instruction count {instructionsA.Count} does not " +
+									$"equal Method B's instruction count {instructionsB.Count}!");
+			}
+			int count = instructionsA.Count;
+			for (int i = 0; i < count; i++) {
+				Instruction instrA = instructionsA[i];
+				Instruction instrB = instructionsB[i];
+				if (!instrA.EqualsInstruction(instrB)) {
+					OperandType operandType = instrA.OpCode.OperandType;
+					if (instrA.OpCode != instrB.OpCode ||
+						(operandType != OperandType.InlineBrTarget &&
+						 operandType != OperandType.ShortInlineBrTarget &&
+						 operandType != OperandType.InlineSwitch))
+					{
+						throw new Exception($"Instruction A {instrA} does not match instruction B {instrB} at index {i}!");
+					}
+				}
+			}
+		}
+
+		#endregion
+
+		#region AddPatcherField/Type
+
+		/// <summary>
+		/// Adds a field to the specified type stating that it has already been patched.
+		/// </summary>
+		/// <param name="classType">The type to add the field to.</param>
+		/// <param name="fieldName">The name of the field to add.</param>
+		/// <returns>True if the field was added, false if the field already existed.</returns>
+		public static bool AddPatcherField(TypeDefinition classType, string fieldName) {
+			if (classType.Fields.FirstOrDefault(f => f.Name == fieldName) != null)
+				return false;
+			const FieldAttributes attributes = FieldAttributes.Static | FieldAttributes.Public;
+			FieldDefinition field = new FieldDefinition(fieldName, attributes, classType.Module.TypeSystem.Object);
+			classType.Fields.Add(field);
+			return true;
+		}
+		/// <summary>
+		/// Adds a type to the specified module stating that it has already been patched.
+		/// </summary>
+		/// <param name="module">The module to add the type to.</param>
+		/// <param name="namespace">The namespace of the type to add.</param>
+		/// <param name="typeName">The name of the type to add.</param>
+		/// <returns>True if the type was added, false if the type already existed.</returns>
+		public static bool AddPatcherType(ModuleDefinition module, string @namespace, string typeName) {
+			TypeAttributes attributes = TypeAttributes.Class | TypeAttributes.NotPublic;
+			if (module.TryGetTypeReference($"{@namespace}.{typeName}", out _))
+				return false;
+			TypeDefinition type = new TypeDefinition(@namespace, typeName, attributes);
+			module.Types.Add(type);
+			return true;
 		}
 
 		#endregion

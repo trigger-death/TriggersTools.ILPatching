@@ -114,8 +114,12 @@ namespace TriggersTools.ILPatching {
 			}
 
 			// We compare primitives differently for the sake of multiopcodes.
-			if ((operand.GetType() != thisOperand.GetType()) &&
-				(!opCode.IsMulti || operand.GetType().IsPrimitive != thisOperand.GetType().IsPrimitive))
+			// Floating points must be a type of floating point
+			Type type = operand.GetType();
+			Type thisType = thisOperand.GetType();
+			if ((type != thisType) && (!opCode.IsMulti ||
+				(type != typeof(int) && type != typeof(byte) && type != typeof(sbyte)) !=
+				(thisType != typeof(int) && thisType != typeof(byte) && thisType != typeof(sbyte))))
 				return false;
 			
 			switch (operand) {
@@ -124,13 +128,13 @@ namespace TriggersTools.ILPatching {
 			case VariableDefinition variable:
 				return (variable.Index == ((VariableDefinition) thisOperand).Index);
 			case MemberReference member:
-				CallSite thisMember = (CallSite) thisOperand;
+				MemberReference thisMember = (MemberReference) thisOperand;
 				return (member.FullName        == thisMember.FullName &&
-						member.Module.FileName == thisMember.Module.FileName);
+						member.Module.Assembly.Name.FullName == thisMember.Module.Assembly.Name.FullName);
 			case CallSite callSite:
 				CallSite thisCallSite = (CallSite) thisOperand;
 				return (callSite.FullName        == thisCallSite.FullName &&
-						callSite.Module.FileName == thisCallSite.Module.FileName);
+						callSite.Module.Assembly.Name.FullName == thisCallSite.Module.Assembly.Name.FullName);
 			case Instruction instr:
 				return (instr == ((Instruction) thisOperand));
 			case Instruction[] instrArray:

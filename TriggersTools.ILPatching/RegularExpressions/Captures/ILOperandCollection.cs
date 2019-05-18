@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace TriggersTools.ILPatching.RegularExpressions {
 	/// <summary>
 	/// A collection of matched IL instruction operands with optional names.
 	/// </summary>
 	[Serializable]
+	[DebuggerDisplay("{DebuggerDisplay,nq}")]
 	public class ILOperandCollection : IReadOnlyList<ILOperand>  {
 		#region Fields
 		
@@ -63,6 +65,12 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 		/// <returns>The enumerator.</returns>
 		public IEnumerator<ILOperand> GetEnumerator() => ((IEnumerable<ILOperand>) operands).GetEnumerator();
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+		#endregion
+
+		#region DebuggerDisplay
+
+		private string DebuggerDisplay => $"Count = {Count}";
 
 		#endregion
 	}

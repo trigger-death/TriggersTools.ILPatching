@@ -125,8 +125,10 @@ namespace TriggersTools.ILPatching.RegularExpressions {
 					End = group.SecondLastMatch.End, // We're abandoning this match, get the second last one
 				}));
 				match.Stack.Push(altState);
+#if DEBUG
 				if (CanOutputDebug)
 					Debug.WriteLine($"{DebugSpacing}Alternative<{opCheck.OpCheckIndex.ToString().PadLeft(2)}>");
+#endif
 				return true;
 			}
 			
